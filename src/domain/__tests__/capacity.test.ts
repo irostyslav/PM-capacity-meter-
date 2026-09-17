@@ -121,3 +121,35 @@ describe('burn-down', () => {
     expect(burn.ratio).toBeCloseTo(1.4);
   });
 });
+
+describe('absence reduces capacity rather than filling it', () => {
+  it('shrinks the week by PTO instead of counting it as planned work', () => {
+    const cell = cellCapacity(engineer(), WEEK, [
+      block({ id: 'pto', hours: 12, kind: 'unavailable' }),
+      block({ id: 'work', hours: 12 }),
+    ]);
+    expect(cell.nominalCapacityHours).toBe(30);
+    expect(cell.unavailableHours).toBe(12);
+    expect(cell.capacityHours).toBe(18);
+    expect(cell.allocatedHours).toBe(12);
+    expect(cell.bufferHours).toBe(6);
+  });
+
+  it('overcommits an engineer whose week shrank under work already planned', () => {
+    const cell = cellCapacity(engineer(), WEEK, [
+      block({ id: 'oncall', hours: 20, kind: 'unavailable' }),
+      block({ id: 'work', hours: 16 }),
+    ]);
+    expect(cell.capacityHours).toBe(10);
+    expect(cell.overHours).toBe(6);
+    expect(cell.isOvercommitted).toBe(true);
+  });
+
+  it('never lets absence push capacity below zero', () => {
+    const cell = cellCapacity(engineer(), WEEK, [
+      block({ id: 'sabbatical', hours: 50, kind: 'unavailable' }),
+    ]);
+    expect(cell.capacityHours).toBe(0);
+    expect(cell.bufferHours).toBe(0);
+  });
+});

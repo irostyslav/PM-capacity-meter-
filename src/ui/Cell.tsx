@@ -27,10 +27,15 @@ export function Cell({
 
   const cell = cellCapacity(engineer, weekStart, blocks);
   const mine = blocksInCell(blocks, engineer.id, weekStart);
-  const scale = CAPACITY_PX / cell.capacityHours;
+  // Scale against the *nominal* week so rows stay comparable: an engineer on
+  // PTO gets a shorter plannable week, not a rescaled one.
+  const scale = CAPACITY_PX / cell.nominalCapacityHours;
+  const work = mine.filter((b) => b.kind !== 'unavailable');
+  const away = mine.filter((b) => b.kind === 'unavailable');
   const overPx = cell.isOvercommitted
     ? Math.min(OVER_PX, cell.overHours * scale + 6)
     : 0;
+  const stackPx = Math.max(CAPACITY_PX, cell.capacityHours * scale + overPx);
   const beyondHorizon = parseDate(weekStart) > lowConfidenceHorizon(today);
 
   return (
@@ -38,16 +43,23 @@ export function Cell({
       ref={setNodeRef}
       role="gridcell"
       className={`cell${isOver ? ' over-drop' : ''}${beyondHorizon ? ' beyond' : ''}`}
-      aria-label={`${engineer.name}, week of ${weekStart}, ${cell.allocatedHours} of ${cell.capacityHours} hours allocated`}
+      aria-label={
+        `${engineer.name}, week of ${weekStart}, ` +
+        `${cell.allocatedHours} of ${cell.capacityHours} hours allocated` +
+        (cell.unavailableHours > 0 ? `, ${cell.unavailableHours} hours away` : '')
+      }
     >
-      <div className="stack" style={{ height: CAPACITY_PX + overPx }}>
+      <div className="stack" style={{ height: stackPx }}>
         {cell.isOvercommitted && (
-          <div className="overzone" style={{ top: CAPACITY_PX, height: overPx }} />
+          <div
+            className="overzone"
+            style={{ top: cell.capacityHours * scale, height: overPx }}
+          />
         )}
-        <div className="capline" style={{ top: CAPACITY_PX }} />
+        <div className="capline" style={{ top: cell.capacityHours * scale }} />
 
         <div className="blocks">
-          {mine.map((block) => (
+          {work.map((block) => (
             <BlockChip key={block.id} block={block} scale={scale} />
           ))}
 
@@ -62,6 +74,21 @@ export function Cell({
               )}
             </div>
           )}
+
+          {away.map((block) => (
+            <div
+              key={block.id}
+              className="away"
+              style={{ flex: `0 0 ${block.hours * scale}px` }}
+              title={`${block.label ?? 'Away'} — ${block.hours}h that were never available to plan`}
+            >
+              {block.hours * scale >= 16 && (
+                <span className="mono">
+                  {block.label ?? 'Away'} · {block.hours}h
+                </span>
+              )}
+            </div>
+          ))}
         </div>
 
         {cell.isOvercommitted && (

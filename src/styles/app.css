@@ -253,6 +253,27 @@ kbd { font-family: 'IBM Plex Mono', monospace; opacity: 0.6; font-size: 11px; }
 }
 .buffer span { font-size: 10px; color: var(--buffer-ink); white-space: nowrap; }
 
+/*
+ * Absence is drawn below the capacity line: the week is shortened, not filled.
+ * Deliberately colourless — time away is neither work nor buffer.
+ */
+.away {
+  border-radius: 4px;
+  border: 1px solid var(--line-2);
+  background: var(--surface-2);
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--protect-a) 0 1px,
+    transparent 1px 6px
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  opacity: 0.8;
+}
+.away span { font-size: 10px; color: var(--ink-3); white-space: nowrap; }
+
 .overchip {
   position: absolute;
   right: 6px;

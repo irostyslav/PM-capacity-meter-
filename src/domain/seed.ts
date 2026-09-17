@@ -53,11 +53,14 @@ export function seedState(today: Date): PlanState {
       },
       b('b20', 'e5', w(1), 'i4', 12, 'medium'),
       { ...b('b21', 'e5', w(2), null, 8, 'high', 'protected', 0), label: 'Architecture brief' },
+      { ...b('b22', 'e4', w(1), null, 12, 'high', 'unavailable', 0), label: 'PTO' },
     ],
     parkingLot: [
-      { id: 'p1', title: 'Vendor invoicing edge cases', oneLineDefinition: '', addedAt: addWeeks(w0, -3), triageId: null, estimatedHours: null, spikeBlockId: null },
-      { id: 'p2', title: 'Search filters redesign', oneLineDefinition: '', addedAt: addWeeks(w0, -9), triageId: null, estimatedHours: null, spikeBlockId: null },
-      { id: 'p3', title: 'Notification preferences', oneLineDefinition: 'A settings page where someone picks which emails they get.', addedAt: addWeeks(w0, -2), triageId: null, estimatedHours: 12, spikeBlockId: null },
+      { id: 'p1', title: 'Vendor invoicing edge cases', oneLineDefinition: '', addedAt: addWeeks(w0, -3), triageId: null, estimatedHours: null, spikeBlockId: null, order: 1, rice: { reach: 40, impact: 1, confidence: 0.8, effortHours: 24 } },
+      // Scores well and has sat undefined for nine weeks. The score does not
+      // open the gate, and staleness still fires: exactly the case the guard exists for.
+      { id: 'p2', title: 'Search filters redesign', oneLineDefinition: '', addedAt: addWeeks(w0, -9), triageId: null, estimatedHours: null, spikeBlockId: null, order: 0, rice: { reach: 900, impact: 2, confidence: 0.8, effortHours: 60 } },
+      { id: 'p3', title: 'Notification preferences', oneLineDefinition: 'A settings page where someone picks which emails they get.', addedAt: addWeeks(w0, -2), triageId: null, estimatedHours: 12, spikeBlockId: null, order: 2, rice: { reach: 120, impact: 0.5, confidence: 1, effortHours: 12 } },
     ],
     triages: [],
     log: [
@@ -76,7 +79,7 @@ function b(
   initiativeId: string | null,
   hours: number,
   confidence: 'high' | 'medium' | 'low',
-  kind: 'delivery' | 'spike' | 'protected' = 'delivery',
+  kind: 'delivery' | 'spike' | 'protected' | 'unavailable' = 'delivery',
   actualHours = 0,
 ) {
   return { id, engineerId, initiativeId, weekStart, hours, confidence, kind, actualHours };

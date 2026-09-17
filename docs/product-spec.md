@@ -2,7 +2,7 @@
 
 **Status:** Draft for build
 **Owner:** PM (single-user surface)
-**Last updated:** 2026-09-17
+**Last updated:** 2026-09-17 · post-review rulings in §15
 
 ---
 
@@ -145,6 +145,26 @@ switching. A user can change it, but the default encodes the thesis: **a week
 was never 40 hours of project work.** Changing it to 40 shows an inline note
 explaining what that implies.
 
+#### 6.2 Absence is not work
+
+A flat weekly number is still wrong, just less wrong than 40. PTO, public
+holidays and on-call rotations are modelled as blocks of `kind = unavailable`,
+and they **reduce** capacity rather than consuming it:
+
+```
+plannable week = weeklyCapacityHours − unavailable hours
+```
+
+This matters because the two readings differ in what they claim. Absence drawn
+as allocation says "this person is busy"; absence drawn as reduced capacity says
+"this person was never available", which is the true statement and the one that
+makes buffer honest. An engineer with 12h of PTO in a 30h week has an 18h week —
+so 16h of planned work leaves 2h of buffer, not 14h.
+
+On the canvas, absence is drawn *below* the capacity line, in no colour at all:
+it is neither work nor buffer. The capacity line moves up to meet the shortened
+week.
+
 ### Initiative
 | Field | Type | Notes |
 | --- | --- | --- |
@@ -155,6 +175,7 @@ explaining what that implies.
 | `estimatedHours` | number \| null | Rolls up from blocks |
 | `triageId` | uuid | Required for anything not `parked` |
 | `definitionOfDone` | string | Required to graduate from the Parking Lot |
+| `links` | `{label, url}[]` | External artifacts — the PRD, the design file, the ticket. v1.1; see §15 |
 
 ### Block
 A contiguous allocation of one engineer's time, on one initiative, in one week.
@@ -266,6 +287,14 @@ hard gate, enforced in the data layer, not just the UI.
 5. **What are we cutting to make room?** *(required; "nothing — buffer absorbs
    it" is a valid answer and is recorded as such)*
 
+**One question per screen.** All five stay mandatory, but they are asked one at
+a time with visible progress, not as a wall of five fields. This is a cognitive
+load decision for the target user, and it costs the gate nothing.
+
+What it explicitly does *not* do is branch on the type of work — "a bug fix asks
+fewer questions than an initiative" is where a gate leaks, because people learn
+which type asks least and pick that one. Depth is not a user choice.
+
 **Behavior**
 - Answers are stored as an immutable `TriageRecord` and surfaced in the
   initiative detail panel forever.
@@ -302,8 +331,33 @@ This is a holding pen with an exit condition.
   prompt to define, spike, or decline it.
 - Declining from the Parking Lot writes to the Commitment Log.
 
+**Ordering and scoring**
+
+A lot with twenty items in it needs a way to decide what gets thought about
+next. Two mechanisms, in priority order:
+
+1. **Manual stack rank.** Drag to order. A PM who has arranged the lot means it.
+2. **RICE score** — Reach × Impact × Confidence ÷ Effort, per item, sortable.
+   Manual rank wins; RICE breaks ties, so a score never silently reorders a
+   decision somebody made on purpose.
+
+**The guard that keeps this from becoming a backlog.** Scoring ranks the queue;
+it does not open the gate. Three rules hold regardless of score:
+
+- A high score **never** satisfies `canGraduate`. An item scoring 1500 with no
+  one-line definition does not reach the board. Tested.
+- A high score **never** suppresses the staleness flag. Eight weeks undefined is
+  eight weeks undefined at any score. Tested.
+- Effort of zero scores 0, not infinity — otherwise the top of the list fills
+  with things nobody has sized.
+
+Without those three, a scoring rubric turns the lot into exactly the comfortable
+backlog this feature exists to prevent: work that feels managed because it has a
+number, while nobody does the thinking.
+
 **Acceptance criteria**
 - [ ] Ungraduated items cannot land on the canvas by drag, keyboard, or API.
+- [ ] A top-scoring undefined item still cannot graduate, and still goes stale.
 - [ ] Item age is visible without interaction.
 - [ ] Stale items are visually distinct and prompt an explicit decision.
 - [ ] The Parking Lot can be collapsed but its item count stays visible.
@@ -388,6 +442,19 @@ Estimated vs. actual hours, per initiative, live.
 - **Squad roll-up:** total committed vs. total capacity vs. buffer, for the
   visible window.
 
+**Estimation bias over time**
+
+A real-time snapshot answers "where are we"; it does not answer "are we any good
+at this". Alongside the per-initiative view, the squad sees:
+
+- **Bias** — actual ÷ estimated across every block with logged time, stated as a
+  direction in words: *under-estimating by 30%* across 24 blocks. Within 5%
+  either way reads as accurate; estimates are not a precision instrument.
+- **Sample size**, always shown next to it. A bias drawn from three blocks is
+  a rumour.
+- **Buffer trend** — buffer actually held, week by week, from the reset history.
+  This is how buffer erosion becomes visible as a pattern rather than a bad week.
+
 **Logging actuals**
 Low friction is the entire game here; if logging is a chore, this feature dies.
 - One-click "log time" on any block, defaulting to the block's planned hours for
@@ -436,15 +503,27 @@ A guided Friday flow. The product's heartbeat.
 browser notification. Dismissible, but the badge persists until completed and
 the canvas shows "reset overdue" after 3 days.
 
-**The flow** (four screens, each skippable but tracked):
+**The flow** (five screens, each skippable but tracked):
 1. **What happened?** Each of this week's blocks: shipped / slipped / cut /
    still going. Bulk actions for the common case.
 2. **Log actuals.** Any block with `actualHours = 0` is surfaced with its planned
    hours pre-filled.
-3. **Rebalance.** Slipped work is offered for next week; the app shows the
+3. **Why it carried.** Anything not finished takes a reason, from a fixed short
+   list: scope grew, unplanned work, blocked externally, estimate was low,
+   incident, person unavailable, other. One tap, with an optional note.
+
+   This is the step that turns the ritual into a feedback loop. A carry-over
+   without a cause teaches the squad nothing, and "we keep slipping" is not a
+   finding anybody can act on. *Scope grew* three weeks running is a different
+   problem from *incident* three weeks running, and they have different fixes —
+   the first is a triage problem, the second is a capacity problem.
+
+   Reasons accumulate across resets into a breakdown by cause, ranked by hours.
+
+4. **Rebalance.** Slipped work is offered for next week; the app shows the
    resulting buffer per engineer *before* confirming, and flags any engineer
    whose next-week buffer would fall below threshold.
-4. **Protect the buffer.** Explicit confirmation step. Default target: **20% of
+5. **Protect the buffer.** Explicit confirmation step. Default target: **20% of
    each engineer's weekly capacity left unallocated.** If an engineer is below
    it, the app names them and asks what moves out. Proceeding anyway is allowed
    and is logged as a deliberate choice.
@@ -454,6 +533,7 @@ history of what the squad actually does versus what it planned.
 
 **Acceptance criteria**
 - [ ] The full ritual completes in under 5 minutes for a 6-engineer squad.
+- [ ] Every carry-over records a cause, and causes aggregate across weeks.
 - [ ] Buffer impact is shown *before* each rebalance is confirmed.
 - [ ] Below-threshold buffer requires an explicit acknowledgement, logged.
 - [ ] A skipped reset is visible on the canvas, not silently forgotten.
@@ -487,7 +567,11 @@ so the canvas can be looked at without the rest of the quarter shouting.
 ### Accessibility (non-negotiable — it is the target persona)
 - Meaning is never carried by hue alone: pair every color with shape, pattern,
   label, or position.
-- Full keyboard path for every drag-and-drop interaction.
+- Full keyboard path for every drag-and-drop interaction — **including moving an
+  item out of the Parking Lot onto the canvas**, which is a distinct interaction
+  from moving a block and needs its own keyboard affordance, not just a
+  draggable attribute.
+- Touch parity: every drag works by touch, or has a tap-based equivalent.
 - Respect `prefers-reduced-motion`: drags snap rather than animate.
 - WCAG AA contrast minimum in both themes.
 - Focus indicators visible on every interactive element.
@@ -581,7 +665,12 @@ the spec is built on sand.
 - Median weekly buffer per engineer stays ≥ 15% (target 20%).
 - Weekly reset completion rate ≥ 80% of weeks.
 - Median estimate-vs-actual variance narrows quarter over quarter.
-- Parking Lot median age trends down (items get defined or declined, not hoarded).
+- Parking Lot median age trends down, and the **defined share** of the lot trends
+  up. Median age alone can fall simply because new items arrived; the two read
+  together separate a working holding pen from a graveyard.
+- Estimation bias narrows quarter over quarter, with sample size reported.
+- Carry-over causes concentrate rather than scatter — a squad that knows why it
+  slips can fix one thing.
 - Triage completion under 90 seconds median — if it's slower, people route
   around the gate.
 
@@ -604,11 +693,68 @@ the spec is built on sand.
 
 1. **Multi-week work:** linked blocks (one per week) vs. a spanning object. Spec
    currently assumes linked blocks for canvas simplicity — validate during M1.
-2. **Partial weeks:** how are holidays and PTO modeled? Candidate: a `protected`
-   block of kind `unavailable` that reduces effective capacity. Decide in M1.
+2. ~~**Partial weeks:** how are holidays and PTO modeled?~~ **Resolved** — a
+   block of `kind = unavailable` that reduces the plannable week rather than
+   filling it. Specified in §6.2, implemented and tested in M1.
 3. **Should overcommit ever hard-block?** Current answer: no — visibility, not
    obstruction, for work already under way. Revisit against metric 1.
 4. **The 2-week confidence horizon** — is two weeks right, or should it scale
    with sprint length? Ship fixed at 14 days; make it configurable only if real
    use demands it.
 5. **Buffer default of 20%** — a starting hypothesis. Instrument it.
+
+---
+
+## 15. Post-spec review — rulings
+
+A multi-perspective review (designer, PM, engineering, agile coach) raised
+thirteen gaps. Each is ruled on below so the reasoning survives the
+conversation. Where a ruling contradicts the reviewer, the reason is stated
+rather than implied.
+
+Three of the thirteen rested on a mistaken premise, noted where relevant — the
+underlying concern was usually still valid.
+
+### Accepted — folded into the spec
+
+| # | Raised | Ruling | Where |
+| --- | --- | --- | --- |
+| 1 | No keyboard path from Parking Lot to timeline | **Accepted as a defect**, not a feature request. §8 already required a full keyboard path; the lot was never given one. Blocks *do* have keyboard movement already. | §8, §F3 |
+| 2 | Triage demands everything at once | **Accepted, mechanism changed.** One question per screen, all five still mandatory. Branching by work type rejected: it makes the gate's depth a user choice. | §F2 |
+| 3 | No empty-state onboarding | **Accepted.** A blank grid teaches nothing, and this product's value is a philosophy before it is a tool. | §15.1 |
+| 4 | Initiatives can't link to external artifacts | **Accepted.** Cheap, and the timeline should be a launchpad. `links` added to Initiative. | §6, v1.1 |
+| 5 | Parking Lot has no prioritization | **Accepted, with a guard.** Manual stack rank plus RICE. Scoring ranks the queue; it never opens the gate or suppresses staleness. | §F3 |
+| 6 | Capacity ignores PTO, holidays, on-call | **Accepted.** *Premise correction: capacity was already 30h and per-engineer, not a flat 40 — but the conclusion stands.* Absence now reduces the plannable week. | §6.2 |
+| 7 | Carry-overs capture what, not why | **Accepted — the strongest item in the review.** A carry-over without a cause teaches nothing. Fixed reason list, aggregated across weeks. | §F8 step 3 |
+| 8 | No cycle-time or aging visibility | **Accepted.** Median age was already a stated metric but was never instrumented. Now paired with defined-share, which is the signal that separates a holding pen from a graveyard. | §F6, §12 |
+| 9 | Burn-down is a snapshot, no trend | **Accepted.** Estimation bias with sample size, plus a buffer trend from reset history. The data was already being captured; nothing read it. | §F6 |
+
+### Deferred
+
+| # | Raised | Ruling |
+| --- | --- | --- |
+| 10 | Draft / scenario planning | **Deferred to v2, and wanted.** Sandboxing a schedule before committing is a genuinely good idea that fits the thesis. It needs real design work first: a draft must not write commitment-log entries, or the log stops meaning anything. Note the stated rationale — "before triggering notifications" — does not apply yet, since v1 is single-user with no notifications. |
+| 11 | Jira / Linear integration | **Still a non-goal for v1**, as the reviewer acknowledges. The double-tracking friction is real and the mitigation is deliberate: actuals are rough by design, logged in seconds, with no timers. If v2 integrates, it should be one-way import of ticket titles, never a sync — a sync re-imports the task-tracker mental model this product exists to escape. |
+
+### Declined
+
+| # | Raised | Ruling |
+| --- | --- | --- |
+| 12 | Break blocks into sub-tasks (Frontend / Backend / QA) | **Declined.** The block being opaque is the point. This is a capacity instrument, not an execution tracker; the moment blocks decompose, it becomes a worse version of a tool the squad already has, and the PM maintains two task systems. Decomposition already has a home — the spike brief's "what we'd build". If visible granularity is genuinely needed, the answer is splitting one block into smaller sibling blocks on the same row, which keeps every object the same type and the capacity math intact. |
+| 13 | Snap animations and richer drop feedback | **Partly declined.** *Premise correction: drop-zone highlighting exists, and does more than was observed — an invalid target highlights in the alert treatment when a low-confidence block hovers past the horizon.* Snap animation is deliberately absent: the target user is someone for whom motion is a cost, and §8 commits to honouring `prefers-reduced-motion`. Polish here should go into making state legible at rest, not into movement. |
+
+### 15.1 Empty state
+
+First run shows a board with no engineers and an empty lot, and explains the
+loop rather than the UI:
+
+1. **Add the squad.** Names and weekly hours. The default is 30, and the screen
+   says why in one line.
+2. **Park something fuzzy.** "Most requests arrive half-understood. That's
+   normal — put one here." The lot fills before the board does, on purpose.
+3. **Run a triage.** The five questions, on the real request they just parked.
+4. **Then the board.** By the time anything lands on the timeline, the user has
+   already been through the loop once.
+
+The empty board itself is never a blank grid: it shows every engineer's week as
+100% buffer, which is the product's whole thesis stated as a picture.

@@ -15,8 +15,12 @@ export type Confidence = 'high' | 'medium' | 'low';
 /**
  * `protected` is PM-declared no-touch time (thinking, writing, discovery). It
  * consumes capacity and is never moved by an automatic rebalance.
+ *
+ * `unavailable` is PTO, a holiday, or an on-call rotation. It does not consume
+ * capacity — it *reduces* it, because those hours were never available to plan
+ * against. See spec §6.2.
  */
-export type BlockKind = 'delivery' | 'spike' | 'protected';
+export type BlockKind = 'delivery' | 'spike' | 'protected' | 'unavailable';
 
 export type InitiativeStatus = 'parked' | 'active' | 'done' | 'declined';
 
@@ -92,13 +96,35 @@ export interface TriageRecord {
 export interface ParkingLotItem {
   id: Uuid;
   title: string;
-  /** Must be non-empty to graduate. */
+  /** Must be non-empty to graduate. A RICE score never substitutes for this. */
   oneLineDefinition: string;
   addedAt: string;
   triageId: Uuid | null;
   estimatedHours: number | null;
   /** Set once a spike has been scheduled for this item. */
   spikeBlockId: Uuid | null;
+  /** Manual stack rank. Lower sorts first. */
+  order: number;
+  rice: RiceScore | null;
+}
+
+/**
+ * Reach × Impact × Confidence ÷ Effort.
+ *
+ * Scoring orders the lot; it does not open the gate. `canGraduate` still
+ * demands a one-line definition, and staleness still fires on an undefined
+ * item however well it scores — otherwise the lot becomes a backlog with a
+ * comfortable place to hoard.
+ */
+export interface RiceScore {
+  /** People or events affected per quarter. */
+  reach: number;
+  /** Massive 3, high 2, medium 1, low 0.5, minimal 0.25. */
+  impact: 0.25 | 0.5 | 1 | 2 | 3;
+  /** High 1, medium 0.8, low 0.5. */
+  confidence: 0.5 | 0.8 | 1;
+  /** Person-hours. Must be > 0. */
+  effortHours: number;
 }
 
 export interface Spike {
@@ -124,12 +150,33 @@ export interface CommitmentLogEntry {
   correctsEntryId?: Uuid;
 }
 
+/**
+ * Why work did not finish. Captured at the weekly reset, because a carry-over
+ * without a cause teaches the squad nothing about its own estimating.
+ */
+export type CarryOverReason =
+  | 'scope-grew'
+  | 'unplanned-work'
+  | 'blocked-externally'
+  | 'estimate-was-low'
+  | 'incident'
+  | 'person-unavailable'
+  | 'other';
+
+export interface CarryOver {
+  blockId: Uuid;
+  reason: CarryOverReason;
+  hoursCarried: number;
+  note: string;
+}
+
 export interface WeeklyReset {
   id: Uuid;
   weekStart: WeekStart;
   completedAt: string;
   shipped: Uuid[];
   slipped: Uuid[];
+  carryOvers: CarryOver[];
   bufferBeforeByEngineer: Record<Uuid, number>;
   bufferAfterByEngineer: Record<Uuid, number>;
   /** True when the PM knowingly went below the buffer threshold. */

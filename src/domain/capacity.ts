@@ -6,6 +6,11 @@ export const BUFFER_TARGET = 0.2;
 export interface CellCapacity {
   engineerId: Uuid;
   weekStart: WeekStart;
+  /** The engineer's standing weekly hours, before absence. */
+  nominalCapacityHours: number;
+  /** PTO, holidays, on-call. These hours were never available to plan against. */
+  unavailableHours: number;
+  /** nominal − unavailable. This is what buffer and overcommitment measure against. */
   capacityHours: number;
   allocatedHours: number;
   /** Never negative: when allocation exceeds capacity this is 0 and `overHours` is positive. */
@@ -27,15 +32,26 @@ export function blocksInCell(
   );
 }
 
+/** Hours planned against capacity. `unavailable` blocks are not planned work. */
 export function allocatedHours(
   blocks: Block[],
   engineerId: Uuid,
   weekStart: WeekStart,
 ): number {
-  return blocksInCell(blocks, engineerId, weekStart).reduce(
-    (sum, b) => sum + b.hours,
-    0,
-  );
+  return blocksInCell(blocks, engineerId, weekStart)
+    .filter((b) => b.kind !== 'unavailable')
+    .reduce((sum, b) => sum + b.hours, 0);
+}
+
+/** Hours the engineer is away: PTO, a holiday, an on-call rotation. */
+export function unavailableHours(
+  blocks: Block[],
+  engineerId: Uuid,
+  weekStart: WeekStart,
+): number {
+  return blocksInCell(blocks, engineerId, weekStart)
+    .filter((b) => b.kind === 'unavailable')
+    .reduce((sum, b) => sum + b.hours, 0);
 }
 
 export function cellCapacity(
@@ -43,7 +59,9 @@ export function cellCapacity(
   weekStart: WeekStart,
   blocks: Block[],
 ): CellCapacity {
-  const capacityHours = engineer.weeklyCapacityHours;
+  const nominalCapacityHours = engineer.weeklyCapacityHours;
+  const unavailable = unavailableHours(blocks, engineer.id, weekStart);
+  const capacityHours = Math.max(0, nominalCapacityHours - unavailable);
   const allocated = allocatedHours(blocks, engineer.id, weekStart);
   const remaining = capacityHours - allocated;
   const bufferHours = Math.max(0, remaining);
@@ -52,6 +70,8 @@ export function cellCapacity(
   return {
     engineerId: engineer.id,
     weekStart,
+    nominalCapacityHours,
+    unavailableHours: unavailable,
     capacityHours,
     allocatedHours: allocated,
     bufferHours,

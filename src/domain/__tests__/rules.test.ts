@@ -55,6 +55,8 @@ function parked(over: Partial<ParkingLotItem> = {}): ParkingLotItem {
     triageId: null,
     estimatedHours: null,
     spikeBlockId: null,
+    order: 0,
+    rice: null,
     ...over,
   };
 }
