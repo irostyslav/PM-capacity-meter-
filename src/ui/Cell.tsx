@@ -4,30 +4,30 @@ import { useStore } from '../state/store';
 import { blocksInCell, cellCapacity } from '../domain/capacity';
 import { lowConfidenceHorizon } from '../domain/rules';
 import { parseDate } from '../domain/weeks';
-import type { Engineer, WeekStart } from '../domain/types';
+import type { Person, WeekStart } from '../domain/types';
 
-/** Pixels that represent one engineer's full weekly capacity. */
+/** Pixels that represent one person's full weekly capacity. */
 export const CAPACITY_PX = 176;
 /** Headroom drawn past the capacity line, used only when a cell runs over. */
 const OVER_PX = 56;
 
 export function Cell({
-  engineer,
+  person,
   weekStart,
 }: {
-  engineer: Engineer;
+  person: Person;
   weekStart: WeekStart;
 }) {
   const blocks = useStore((s) => s.blocks);
   const today = useStore((s) => s.today);
 
   const { setNodeRef, isOver } = useDroppable({
-    id: `${engineer.id}::${weekStart}`,
+    id: `${person.id}::${weekStart}`,
   });
 
-  const cell = cellCapacity(engineer, weekStart, blocks);
-  const mine = blocksInCell(blocks, engineer.id, weekStart);
-  // Scale against the *nominal* week so rows stay comparable: an engineer on
+  const cell = cellCapacity(person, weekStart, blocks);
+  const mine = blocksInCell(blocks, person.id, weekStart);
+  // Scale against the *nominal* week so rows stay comparable: an person on
   // PTO gets a shorter plannable week, not a rescaled one.
   const scale = CAPACITY_PX / cell.nominalCapacityHours;
   const work = mine.filter((b) => b.kind !== 'unavailable');
@@ -44,7 +44,7 @@ export function Cell({
       role="gridcell"
       className={`cell${isOver ? ' over-drop' : ''}${beyondHorizon ? ' beyond' : ''}`}
       aria-label={
-        `${engineer.name}, week of ${weekStart}, ` +
+        `${person.name}, week of ${weekStart}, ` +
         `${cell.allocatedHours} of ${cell.capacityHours} hours allocated` +
         (cell.unavailableHours > 0 ? `, ${cell.unavailableHours} hours away` : '')
       }

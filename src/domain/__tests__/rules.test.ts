@@ -64,7 +64,7 @@ function parked(over: Partial<ParkingLotItem> = {}): ParkingLotItem {
 function block(over: Partial<Block> = {}): Block {
   return {
     id: 'b1',
-    engineerId: 'e1',
+    personId: 'e1',
     initiativeId: 'i1',
     weekStart: '2026-09-14',
     hours: 16,

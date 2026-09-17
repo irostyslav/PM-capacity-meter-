@@ -25,6 +25,10 @@
 
   --over: #c0392b;
   --over-tint: rgba(192, 57, 43, 0.09);
+  /* PM work is a different class of thing, not a fifth initiative — so it gets
+     a deliberately quiet slate rather than a categorical hue. */
+  --pm: #44505e;
+  --pm-tint: rgba(68, 80, 94, 0.08);
   --buffer-ink: #5f6c7a;
   --buffer-a: rgba(120, 131, 143, 0.16);
   --protect-a: rgba(18, 22, 27, 0.1);
@@ -50,6 +54,8 @@
     --cat-4: #9b5ac4;
     --over: #e8695c;
     --over-tint: rgba(232, 105, 92, 0.13);
+    --pm: #64768a;
+    --pm-tint: rgba(100, 118, 138, 0.14);
     --buffer-ink: #8a97a5;
     --buffer-a: rgba(138, 151, 165, 0.18);
     --protect-a: rgba(237, 241, 245, 0.12);
@@ -75,6 +81,8 @@
   --cat-4: #9b5ac4;
   --over: #e8695c;
   --over-tint: rgba(232, 105, 92, 0.13);
+  --pm: #64768a;
+  --pm-tint: rgba(100, 118, 138, 0.14);
   --buffer-ink: #8a97a5;
   --buffer-a: rgba(138, 151, 165, 0.18);
   --protect-a: rgba(237, 241, 245, 0.12);
@@ -135,6 +143,12 @@ button { font: inherit; color: inherit; }
 .meter-value { font-size: 17px; font-weight: 600; line-height: 1.1; }
 .meter-label { font-size: 10.5px; color: var(--ink-3); }
 .meter.over .meter-value { color: var(--over); }
+.meter-divider {
+  width: 1px;
+  align-self: stretch;
+  background: var(--line-2);
+  margin-inline: 2px;
+}
 
 .btn {
   background: var(--surface);
@@ -357,3 +371,100 @@ kbd { font-family: 'IBM Plex Mono', monospace; opacity: 0.6; font-size: 11px; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
+
+
+/* ---- role groups ------------------------------------------------------- */
+.group-pm { background: var(--pm-tint); }
+.row.grouphead { border-bottom: 1px solid var(--line); }
+.row.grouphead .namecell { padding-block: 7px; background: transparent; }
+.group-pm .row.grouphead .namecell,
+.group-pm .namecell { background: var(--surface); }
+.grouphead-cell { border-right: 1px solid var(--line); padding: 7px 10px; }
+
+/* PM work: vertical rules, so it never reads as an initiative block. */
+.blk.pm {
+  background-image: repeating-linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.16) 0 1px,
+    transparent 1px 7px
+  );
+}
+
+/* ---- my week ----------------------------------------------------------- */
+.myweek { margin-top: 18px; }
+.myweek-figures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.figure {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface-2);
+}
+.figure.over { border-color: var(--over); background: var(--over-tint); }
+.figure-value { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; }
+.figure.over .figure-value { color: var(--over); }
+.figure-label { font-size: 11px; color: var(--ink-3); }
+
+.note {
+  font-size: 12px;
+  color: var(--ink-2);
+  background: var(--surface-2);
+  border-left: 2px solid var(--line-3);
+  padding: 9px 12px;
+  border-radius: 0 5px 5px 0;
+  margin: 0 0 14px;
+}
+.note.warn { border-left-color: var(--over); background: var(--over-tint); color: var(--over); }
+
+.myweek-split {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 760px) { .myweek-split { grid-template-columns: 1fr; } }
+
+.bars { display: flex; flex-direction: column; gap: 7px; margin: 8px 0 6px; }
+.bar-row {
+  display: grid;
+  grid-template-columns: 92px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  font-size: 12px;
+}
+.bar-label { color: var(--ink-2); }
+.bar-track { position: relative; height: 14px; }
+.bar-track i { position: absolute; left: 0; border-radius: 2px; display: block; }
+.bar-track .planned {
+  top: 0;
+  height: 5px;
+  background: var(--pm);
+  opacity: 0.35;
+}
+.bar-track .logged {
+  top: 6px;
+  height: 8px;
+  background: var(--pm);
+}
+.bar-value { font-size: 11px; color: var(--ink-2); }
+
+.ledger { margin: 8px 0 6px; display: flex; flex-direction: column; }
+.ledger-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 12.5px;
+}
+.ledger-row:last-child { border-bottom: 0; }
+.ledger-row dt { color: var(--ink-2); margin: 0; }
+.ledger-row dd { margin: 0; font-weight: 500; }
+.ledger-row.over dd { color: var(--over); font-weight: 600; }

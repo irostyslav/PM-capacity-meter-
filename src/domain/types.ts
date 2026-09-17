@@ -12,15 +12,39 @@ export type WeekStart = string;
 
 export type Confidence = 'high' | 'medium' | 'low';
 
+export type Role = 'engineer' | 'pm';
+
 /**
- * `protected` is PM-declared no-touch time (thinking, writing, discovery). It
+ * What a PM's hours actually go into. Named specifically, because "PM work" as
+ * one undifferentiated lump is how it ends up invisible: nobody argues with
+ * "discovery for the billing migration, 8 hours", but everybody argues with
+ * "PM stuff".
+ */
+export type PmWorkType =
+  | 'discovery'
+  | 'definition'
+  | 'triage'
+  | 'stakeholder'
+  | 'review';
+
+/**
+ * `protected` is declared no-touch time (thinking, writing, discovery). It
  * consumes capacity and is never moved by an automatic rebalance.
  *
  * `unavailable` is PTO, a holiday, or an on-call rotation. It does not consume
  * capacity — it *reduces* it, because those hours were never available to plan
  * against. See spec §6.2.
+ *
+ * `pm-work` is the PM's own hours: discovery, definition, triage, stakeholder
+ * time, review. It consumes the PM's capacity exactly as delivery consumes an
+ * engineer's. See spec §6.3.
  */
-export type BlockKind = 'delivery' | 'spike' | 'protected' | 'unavailable';
+export type BlockKind =
+  | 'delivery'
+  | 'spike'
+  | 'protected'
+  | 'unavailable'
+  | 'pm-work';
 
 export type InitiativeStatus = 'parked' | 'active' | 'done' | 'declined';
 
@@ -31,11 +55,19 @@ export type CommitmentAction =
   | 'cut'
   | 'rebalanced';
 
-export interface Engineer {
+/**
+ * Anyone with a row on the board — including the PM.
+ *
+ * The PM being absent from this type was the product's original blind spot: a
+ * planner with no capacity is a planner whose discovery is implicitly free,
+ * which is how the work ends up happening at night. See spec §6.3.
+ */
+export interface Person {
   id: Uuid;
   name: string;
   /** Row accent. Deliberately distinct from the initiative palette. */
   color: string;
+  role: Role;
   /**
    * Defaults to 30, not 40. The default encodes the thesis that a week was
    * never 40 hours of project work — see spec §6.1.
@@ -62,15 +94,17 @@ export interface Initiative {
  */
 export interface Block {
   id: Uuid;
-  engineerId: Uuid;
+  personId: Uuid;
   initiativeId: Uuid | null;
   weekStart: WeekStart;
   hours: number;
   confidence: Confidence;
   kind: BlockKind;
   actualHours: number;
-  /** Only meaningful for `protected` blocks. */
+  /** Only meaningful for `protected` and `unavailable` blocks. */
   label?: string;
+  /** Required for `pm-work` blocks: what kind of thinking this is. */
+  pmWork?: PmWorkType;
   /** Only meaningful for `spike` blocks. */
   spike?: Spike;
 }
@@ -177,15 +211,15 @@ export interface WeeklyReset {
   shipped: Uuid[];
   slipped: Uuid[];
   carryOvers: CarryOver[];
-  bufferBeforeByEngineer: Record<Uuid, number>;
-  bufferAfterByEngineer: Record<Uuid, number>;
+  bufferBeforeByPerson: Record<Uuid, number>;
+  bufferAfterByPerson: Record<Uuid, number>;
   /** True when the PM knowingly went below the buffer threshold. */
   acceptedBelowThreshold: boolean;
   notes: string;
 }
 
 export interface PlanState {
-  engineers: Engineer[];
+  people: Person[];
   initiatives: Initiative[];
   blocks: Block[];
   parkingLot: ParkingLotItem[];

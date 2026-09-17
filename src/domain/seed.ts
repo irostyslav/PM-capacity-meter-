@@ -12,12 +12,16 @@ export function seedState(today: Date): PlanState {
   const w = (n: number) => addWeeks(w0, n);
 
   return {
-    engineers: [
-      { id: 'e1', name: 'Priya Raman', color: '#5F6C7A', weeklyCapacityHours: 30, active: true },
-      { id: 'e2', name: 'Marcus Bell', color: '#5F6C7A', weeklyCapacityHours: 30, active: true },
-      { id: 'e3', name: 'Dani Okoye', color: '#5F6C7A', weeklyCapacityHours: 24, active: true },
-      { id: 'e4', name: 'Tomás Linde', color: '#5F6C7A', weeklyCapacityHours: 30, active: true },
-      { id: 'e5', name: 'Ada Choi', color: '#5F6C7A', weeklyCapacityHours: 30, active: true },
+    people: [
+      // The PM is a row, not an assumption. 24h rather than 30: a PM's week
+      // carries more standing meetings than an engineer's before any thinking
+      // starts.
+      { id: 'pm1', name: 'You', color: '#5F6C7A', role: 'pm', weeklyCapacityHours: 24, active: true },
+      { id: 'e1', name: 'Priya Raman', color: '#5F6C7A', role: 'engineer', weeklyCapacityHours: 30, active: true },
+      { id: 'e2', name: 'Marcus Bell', color: '#5F6C7A', role: 'engineer', weeklyCapacityHours: 30, active: true },
+      { id: 'e3', name: 'Dani Okoye', color: '#5F6C7A', role: 'engineer', weeklyCapacityHours: 24, active: true },
+      { id: 'e4', name: 'Tomás Linde', color: '#5F6C7A', role: 'engineer', weeklyCapacityHours: 30, active: true },
+      { id: 'e5', name: 'Ada Choi', color: '#5F6C7A', role: 'engineer', weeklyCapacityHours: 30, active: true },
     ],
     initiatives: [
       { id: 'i1', title: 'Checkout rewrite', color: 'var(--cat-1)', status: 'active', estimatedHours: 74, triageId: 't1', definitionOfDone: 'Card payments work end to end.' },
@@ -54,6 +58,19 @@ export function seedState(today: Date): PlanState {
       b('b20', 'e5', w(1), 'i4', 12, 'medium'),
       { ...b('b21', 'e5', w(2), null, 8, 'high', 'protected', 0), label: 'Architecture brief' },
       { ...b('b22', 'e4', w(1), null, 12, 'high', 'unavailable', 0), label: 'PTO' },
+
+      // The PM's own week. This is the row the tool was missing: 30h of
+      // thinking planned into a 24h week, with 32h actually logged — the
+      // 8h difference is the evening and weekend work, now a number.
+      pm('pm-1', w(0), 'i3', 'definition', 10, 9),
+      pm('pm-2', w(0), 'i2', 'discovery', 8, 11),
+      pm('pm-3', w(0), null, 'triage', 4, 6),
+      pm('pm-4', w(0), null, 'stakeholder', 8, 6),
+      pm('pm-5', w(1), 'i4', 'discovery', 10, 0),
+      pm('pm-6', w(1), null, 'triage', 4, 0),
+      pm('pm-7', w(1), null, 'stakeholder', 6, 0),
+      pm('pm-8', w(2), 'i1', 'definition', 8, 0),
+      pm('pm-9', w(2), null, 'triage', 4, 0),
     ],
     parkingLot: [
       { id: 'p1', title: 'Vendor invoicing edge cases', oneLineDefinition: '', addedAt: addWeeks(w0, -3), triageId: null, estimatedHours: null, spikeBlockId: null, order: 1, rice: { reach: 40, impact: 1, confidence: 0.8, effortHours: 24 } },
@@ -72,9 +89,30 @@ export function seedState(today: Date): PlanState {
   };
 }
 
+function pm(
+  id: string,
+  weekStart: string,
+  initiativeId: string | null,
+  pmWork: 'discovery' | 'definition' | 'triage' | 'stakeholder' | 'review',
+  hours: number,
+  actualHours: number,
+) {
+  return {
+    id,
+    personId: 'pm1',
+    initiativeId,
+    weekStart,
+    hours,
+    confidence: 'high' as const,
+    kind: 'pm-work' as const,
+    actualHours,
+    pmWork,
+  };
+}
+
 function b(
   id: string,
-  engineerId: string,
+  personId: string,
   weekStart: string,
   initiativeId: string | null,
   hours: number,
@@ -82,5 +120,5 @@ function b(
   kind: 'delivery' | 'spike' | 'protected' | 'unavailable' = 'delivery',
   actualHours = 0,
 ) {
-  return { id, engineerId, initiativeId, weekStart, hours, confidence, kind, actualHours };
+  return { id, personId, initiativeId, weekStart, hours, confidence, kind, actualHours };
 }

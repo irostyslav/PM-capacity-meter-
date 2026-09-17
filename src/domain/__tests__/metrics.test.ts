@@ -30,7 +30,7 @@ function item(over: Partial<ParkingLotItem> = {}): ParkingLotItem {
 function block(over: Partial<Block> = {}): Block {
   return {
     id: 'b1',
-    engineerId: 'e1',
+    personId: 'e1',
     initiativeId: 'i1',
     weekStart: '2026-09-14',
     hours: 10,
@@ -149,8 +149,8 @@ describe('carry-over reasons', () => {
     shipped: [],
     slipped: [],
     carryOvers: [],
-    bufferBeforeByEngineer: {},
-    bufferAfterByEngineer: {},
+    bufferBeforeByPerson: {},
+    bufferAfterByPerson: {},
     acceptedBelowThreshold: false,
     notes: '',
     ...over,
@@ -177,8 +177,8 @@ describe('carry-over reasons', () => {
 
   it('reports buffer week by week, oldest first', () => {
     const trend = bufferTrend([
-      reset({ weekStart: '2026-09-21', bufferAfterByEngineer: { e1: 3, e2: 3 } }),
-      reset({ weekStart: '2026-09-14', bufferAfterByEngineer: { e1: 9, e2: 9 } }),
+      reset({ weekStart: '2026-09-21', bufferAfterByPerson: { e1: 3, e2: 3 } }),
+      reset({ weekStart: '2026-09-14', bufferAfterByPerson: { e1: 9, e2: 9 } }),
     ]);
     expect(trend.map((t) => t.weekStart)).toEqual(['2026-09-14', '2026-09-21']);
     expect(trend[0]?.bufferFraction).toBeCloseTo(0.3);

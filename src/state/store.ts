@@ -21,7 +21,7 @@ import { toISODate } from '../domain/weeks';
 
 export interface PendingRejection {
   blockId: Uuid;
-  target: { engineerId: Uuid; weekStart: WeekStart } | null;
+  target: { personId: Uuid; weekStart: WeekStart } | null;
   result: Extract<RuleResult, { ok: false }>;
 }
 
@@ -35,7 +35,7 @@ interface Store extends PlanState {
   toggleFocusMode: () => void;
   dismissRejection: () => void;
 
-  moveBlock: (id: Uuid, engineerId: Uuid, weekStart: WeekStart) => RuleResult;
+  moveBlock: (id: Uuid, personId: Uuid, weekStart: WeekStart) => RuleResult;
   setConfidence: (id: Uuid, confidence: Confidence, reason?: string) => RuleResult;
   logActuals: (id: Uuid, hours: number) => void;
   removeBlock: (id: Uuid) => void;
@@ -64,17 +64,17 @@ export const useStore = create<Store>((set, get) => ({
   toggleFocusMode: () => set((s) => ({ focusMode: !s.focusMode })),
   dismissRejection: () => set({ rejection: null }),
 
-  moveBlock: (id, engineerId, weekStart) => {
+  moveBlock: (id, personId, weekStart) => {
     const state = get();
     const block = state.blocks.find((b) => b.id === id);
     if (!block) return { ok: true };
-    if (block.engineerId === engineerId && block.weekStart === weekStart) {
+    if (block.personId === personId && block.weekStart === weekStart) {
       return { ok: true };
     }
 
     const result = canMoveBlock(block, weekStart, state.today);
     if (!result.ok) {
-      set({ rejection: { blockId: id, target: { engineerId, weekStart }, result } });
+      set({ rejection: { blockId: id, target: { personId, weekStart }, result } });
       return result;
     }
 
@@ -83,7 +83,7 @@ export const useStore = create<Store>((set, get) => ({
       produce<Store>((draft) => {
         const target = draft.blocks.find((b) => b.id === id);
         if (!target) return;
-        target.engineerId = engineerId;
+        target.personId = personId;
         target.weekStart = weekStart;
         draft.log.push({
           id: nextId('l'),
@@ -184,7 +184,7 @@ export const useStore = create<Store>((set, get) => ({
     ),
 }));
 
-function describe(state: Pick<PlanState, 'engineers'>, block: Block): string {
-  const engineer = state.engineers.find((e) => e.id === block.engineerId);
-  return `${engineer?.name ?? 'unknown'}, week of ${block.weekStart}`;
+function describe(state: Pick<PlanState, 'people'>, block: Block): string {
+  const person = state.people.find((e) => e.id === block.personId);
+  return `${person?.name ?? 'unknown'}, week of ${block.weekStart}`;
 }

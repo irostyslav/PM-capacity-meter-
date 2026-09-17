@@ -5,15 +5,16 @@ import {
   cellCapacity,
   squadRollup,
 } from '../capacity';
-import type { Block, Engineer } from '../types';
+import type { Block, Person } from '../types';
 
 const WEEK = '2026-09-14';
 
-function engineer(over: Partial<Engineer> = {}): Engineer {
+function person(over: Partial<Person> = {}): Person {
   return {
     id: 'e1',
     name: 'Priya Raman',
     color: '#5F6C7A',
+    role: 'engineer',
     weeklyCapacityHours: 30,
     active: true,
     ...over,
@@ -23,7 +24,7 @@ function engineer(over: Partial<Engineer> = {}): Engineer {
 function block(over: Partial<Block> = {}): Block {
   return {
     id: 'b1',
-    engineerId: 'e1',
+    personId: 'e1',
     initiativeId: 'i1',
     weekStart: WEEK,
     hours: 10,
@@ -36,18 +37,18 @@ function block(over: Partial<Block> = {}): Block {
 
 describe('cell capacity', () => {
   it('reports the remainder as buffer, not as empty space', () => {
-    const cell = cellCapacity(engineer(), WEEK, [block({ hours: 18 })]);
+    const cell = cellCapacity(person(), WEEK, [block({ hours: 18 })]);
     expect(cell.bufferHours).toBe(12);
     expect(cell.overHours).toBe(0);
     expect(cell.isOvercommitted).toBe(false);
   });
 
-  it('defaults an engineer week to 30 hours, not 40', () => {
-    expect(engineer().weeklyCapacityHours).toBe(30);
+  it('defaults an person week to 30 hours, not 40', () => {
+    expect(person().weeklyCapacityHours).toBe(30);
   });
 
   it('reports overcommitment without letting buffer go negative', () => {
-    const cell = cellCapacity(engineer(), WEEK, [
+    const cell = cellCapacity(person(), WEEK, [
       block({ id: 'a', hours: 22 }),
       block({ id: 'b', hours: 12 }),
     ]);
@@ -58,21 +59,21 @@ describe('cell capacity', () => {
   });
 
   it('flags a cell whose buffer has been eaten below the target', () => {
-    const cell = cellCapacity(engineer(), WEEK, [block({ hours: 27 })]);
+    const cell = cellCapacity(person(), WEEK, [block({ hours: 27 })]);
     expect(cell.bufferFraction).toBeLessThan(BUFFER_TARGET);
     expect(cell.isBelowBufferTarget).toBe(true);
   });
 
   it('does not double-report an overcommitted cell as merely below target', () => {
-    const cell = cellCapacity(engineer(), WEEK, [block({ hours: 40 })]);
+    const cell = cellCapacity(person(), WEEK, [block({ hours: 40 })]);
     expect(cell.isOvercommitted).toBe(true);
     expect(cell.isBelowBufferTarget).toBe(false);
   });
 
-  it('ignores blocks belonging to another engineer or week', () => {
-    const cell = cellCapacity(engineer(), WEEK, [
+  it('ignores blocks belonging to another person or week', () => {
+    const cell = cellCapacity(person(), WEEK, [
       block({ id: 'a', hours: 10 }),
-      block({ id: 'b', hours: 10, engineerId: 'e2' }),
+      block({ id: 'b', hours: 10, personId: 'e2' }),
       block({ id: 'c', hours: 10, weekStart: '2026-09-21' }),
     ]);
     expect(cell.allocatedHours).toBe(10);
@@ -81,21 +82,21 @@ describe('cell capacity', () => {
 
 describe('squad rollup', () => {
   it('counts committed hours only up to capacity, and surfaces the rest as over', () => {
-    const engineers = [engineer(), engineer({ id: 'e2', name: 'Marcus Bell' })];
+    const people = [person(), person({ id: 'e2', name: 'Marcus Bell' })];
     const blocks = [
       block({ id: 'a', hours: 20 }),
-      block({ id: 'b', hours: 34, engineerId: 'e2' }),
+      block({ id: 'b', hours: 34, personId: 'e2' }),
     ];
-    const roll = squadRollup({ engineers, blocks }, WEEK);
+    const roll = squadRollup({ people, blocks }, WEEK);
     expect(roll.capacityHours).toBe(60);
     expect(roll.committedHours).toBe(50);
     expect(roll.bufferHours).toBe(10);
     expect(roll.overHours).toBe(4);
   });
 
-  it('leaves inactive engineers out of the totals', () => {
-    const engineers = [engineer(), engineer({ id: 'e2', active: false })];
-    const roll = squadRollup({ engineers, blocks: [] }, WEEK);
+  it('leaves inactive people out of the totals', () => {
+    const people = [person(), person({ id: 'e2', active: false })];
+    const roll = squadRollup({ people, blocks: [] }, WEEK);
     expect(roll.capacityHours).toBe(30);
   });
 });
@@ -124,7 +125,7 @@ describe('burn-down', () => {
 
 describe('absence reduces capacity rather than filling it', () => {
   it('shrinks the week by PTO instead of counting it as planned work', () => {
-    const cell = cellCapacity(engineer(), WEEK, [
+    const cell = cellCapacity(person(), WEEK, [
       block({ id: 'pto', hours: 12, kind: 'unavailable' }),
       block({ id: 'work', hours: 12 }),
     ]);
@@ -135,8 +136,8 @@ describe('absence reduces capacity rather than filling it', () => {
     expect(cell.bufferHours).toBe(6);
   });
 
-  it('overcommits an engineer whose week shrank under work already planned', () => {
-    const cell = cellCapacity(engineer(), WEEK, [
+  it('overcommits an person whose week shrank under work already planned', () => {
+    const cell = cellCapacity(person(), WEEK, [
       block({ id: 'oncall', hours: 20, kind: 'unavailable' }),
       block({ id: 'work', hours: 16 }),
     ]);
@@ -146,7 +147,7 @@ describe('absence reduces capacity rather than filling it', () => {
   });
 
   it('never lets absence push capacity below zero', () => {
-    const cell = cellCapacity(engineer(), WEEK, [
+    const cell = cellCapacity(person(), WEEK, [
       block({ id: 'sabbatical', hours: 50, kind: 'unavailable' }),
     ]);
     expect(cell.capacityHours).toBe(0);

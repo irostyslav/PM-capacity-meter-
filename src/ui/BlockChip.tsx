@@ -14,10 +14,7 @@ export function BlockChip({ block, scale }: { block: Block; scale: number }) {
     useDraggable({ id: block.id });
 
   const initiative = initiatives.find((i) => i.id === block.initiativeId);
-  const title =
-    block.kind === 'protected'
-      ? (block.label ?? 'Protected time')
-      : `${initiative?.title ?? 'Untitled'}${block.kind === 'spike' ? ' — spike' : ''}`;
+  const title = describeBlock(block, initiative?.title);
 
   const height = block.hours * scale;
   const dots = CONFIDENCE_DOTS[block.confidence];
@@ -25,6 +22,7 @@ export function BlockChip({ block, scale }: { block: Block; scale: number }) {
   const className = [
     'blk',
     block.kind === 'spike' ? 'spike' : '',
+    block.kind === 'pm-work' ? `pm pm-${block.pmWork ?? 'other'}` : '',
     block.kind === 'protected' ? 'protect' : '',
     height < 24 ? 'tiny' : '',
     selected ? 'selected' : '',
@@ -40,7 +38,11 @@ export function BlockChip({ block, scale }: { block: Block; scale: number }) {
       style={{
         flex: `0 0 ${height}px`,
         backgroundColor:
-          block.kind === 'protected' ? undefined : (initiative?.color ?? 'var(--cat-1)'),
+          block.kind === 'protected'
+            ? undefined
+            : block.kind === 'pm-work'
+              ? 'var(--pm)'
+              : (initiative?.color ?? 'var(--cat-1)'),
         transform: CSS.Translate.toString(transform),
       }}
       onClick={() => select(selected ? null : block.id)}
@@ -71,4 +73,24 @@ export function BlockChip({ block, scale }: { block: Block; scale: number }) {
       )}
     </div>
   );
+}
+
+const PM_WORK_LABEL: Record<string, string> = {
+  discovery: 'Discovery',
+  definition: 'Definition',
+  triage: 'Triage',
+  stakeholder: 'Stakeholders',
+  review: 'Review',
+};
+
+/** What the block says on the board. PM work names the thinking, then its subject. */
+export function describeBlock(block: Block, initiativeTitle?: string): string {
+  if (block.kind === 'protected' || block.kind === 'unavailable') {
+    return block.label ?? 'Protected time';
+  }
+  if (block.kind === 'pm-work') {
+    const kind = PM_WORK_LABEL[block.pmWork ?? 'other'] ?? 'PM work';
+    return initiativeTitle ? `${kind} — ${initiativeTitle}` : kind;
+  }
+  return `${initiativeTitle ?? 'Untitled'}${block.kind === 'spike' ? ' — spike' : ''}`;
 }

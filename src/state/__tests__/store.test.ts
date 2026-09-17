@@ -2,7 +2,7 @@ import { describe, expect, it, beforeEach } from 'vitest';
 import { useStore } from '../store';
 import { seedState } from '../../domain/seed';
 import { addWeeks, weekStartOf } from '../../domain/weeks';
-import { cellCapacity } from '../../domain/capacity';
+import { cellCapacity, personWeek } from '../../domain/capacity';
 
 /**
  * The store must not be a second place where rules live. These tests prove it
@@ -16,11 +16,11 @@ describe('store', () => {
     useStore.setState({ ...seedState(today), rejection: null, selectedBlockId: null });
   });
 
-  it('moves a block between engineers and weeks', () => {
+  it('moves a block between people and weeks', () => {
     const result = useStore.getState().moveBlock('b3', 'e4', addWeeks(w0, 1));
     expect(result.ok).toBe(true);
     const moved = useStore.getState().blocks.find((b) => b.id === 'b3');
-    expect(moved?.engineerId).toBe('e4');
+    expect(moved?.personId).toBe('e4');
   });
 
   it('records every move in the commitment log', () => {
@@ -64,18 +64,30 @@ describe('store', () => {
   });
 
   it('returns removed hours to buffer', () => {
-    const engineer = useStore.getState().engineers[0]!;
-    const before = cellCapacity(engineer, w0, useStore.getState().blocks);
+    const person = useStore.getState().people.find((p) => p.id === 'e1')!;
+    const before = cellCapacity(person, w0, useStore.getState().blocks);
     useStore.getState().removeBlock('b1');
-    const after = cellCapacity(engineer, w0, useStore.getState().blocks);
+    const after = cellCapacity(person, w0, useStore.getState().blocks);
     expect(after.bufferHours).toBe(before.bufferHours + 16);
   });
 
-  it('opens with a squad that is overcommitted in exactly one cell', () => {
+  it('opens with exactly one engineer overcommitted', () => {
     const state = useStore.getState();
-    const over = state.engineers.filter(
-      (e) => cellCapacity(e, w0, state.blocks).isOvercommitted,
+    const over = state.people.filter(
+      (p) =>
+        p.role === 'engineer' && cellCapacity(p, w0, state.blocks).isOvercommitted,
     );
-    expect(over.map((e) => e.id)).toEqual(['e2']);
+    expect(over.map((p) => p.id)).toEqual(['e2']);
+  });
+
+  it('opens with the PM over capacity and in overtime — the case the row exists for', () => {
+    const state = useStore.getState();
+    const pm = state.people.find((p) => p.role === 'pm')!;
+    const week = personWeek(pm, w0, state.blocks);
+
+    expect(week.capacityHours).toBe(24);
+    expect(week.plannedHours).toBeGreaterThan(week.capacityHours);
+    // Hours actually logged past a sustainable week: the evenings and weekends.
+    expect(week.overtimeHours).toBe(8);
   });
 });

@@ -1,12 +1,12 @@
-import type { Block, Engineer, PlanState, Uuid, WeekStart } from './types';
+import type { Block, Person, PlanState, Role, Uuid, WeekStart } from './types';
 
 /** Fraction of a week deliberately left unallocated. See spec §F8 step 4. */
 export const BUFFER_TARGET = 0.2;
 
 export interface CellCapacity {
-  engineerId: Uuid;
+  personId: Uuid;
   weekStart: WeekStart;
-  /** The engineer's standing weekly hours, before absence. */
+  /** The person's standing weekly hours, before absence. */
   nominalCapacityHours: number;
   /** PTO, holidays, on-call. These hours were never available to plan against. */
   unavailableHours: number;
@@ -24,51 +24,51 @@ export interface CellCapacity {
 
 export function blocksInCell(
   blocks: Block[],
-  engineerId: Uuid,
+  personId: Uuid,
   weekStart: WeekStart,
 ): Block[] {
   return blocks.filter(
-    (b) => b.engineerId === engineerId && b.weekStart === weekStart,
+    (b) => b.personId === personId && b.weekStart === weekStart,
   );
 }
 
 /** Hours planned against capacity. `unavailable` blocks are not planned work. */
 export function allocatedHours(
   blocks: Block[],
-  engineerId: Uuid,
+  personId: Uuid,
   weekStart: WeekStart,
 ): number {
-  return blocksInCell(blocks, engineerId, weekStart)
+  return blocksInCell(blocks, personId, weekStart)
     .filter((b) => b.kind !== 'unavailable')
     .reduce((sum, b) => sum + b.hours, 0);
 }
 
-/** Hours the engineer is away: PTO, a holiday, an on-call rotation. */
+/** Hours the person is away: PTO, a holiday, an on-call rotation. */
 export function unavailableHours(
   blocks: Block[],
-  engineerId: Uuid,
+  personId: Uuid,
   weekStart: WeekStart,
 ): number {
-  return blocksInCell(blocks, engineerId, weekStart)
+  return blocksInCell(blocks, personId, weekStart)
     .filter((b) => b.kind === 'unavailable')
     .reduce((sum, b) => sum + b.hours, 0);
 }
 
 export function cellCapacity(
-  engineer: Engineer,
+  person: Person,
   weekStart: WeekStart,
   blocks: Block[],
 ): CellCapacity {
-  const nominalCapacityHours = engineer.weeklyCapacityHours;
-  const unavailable = unavailableHours(blocks, engineer.id, weekStart);
+  const nominalCapacityHours = person.weeklyCapacityHours;
+  const unavailable = unavailableHours(blocks, person.id, weekStart);
   const capacityHours = Math.max(0, nominalCapacityHours - unavailable);
-  const allocated = allocatedHours(blocks, engineer.id, weekStart);
+  const allocated = allocatedHours(blocks, person.id, weekStart);
   const remaining = capacityHours - allocated;
   const bufferHours = Math.max(0, remaining);
   const overHours = Math.max(0, -remaining);
   const bufferFraction = capacityHours > 0 ? bufferHours / capacityHours : 0;
   return {
-    engineerId: engineer.id,
+    personId: person.id,
     weekStart,
     nominalCapacityHours,
     unavailableHours: unavailable,
@@ -91,13 +91,15 @@ export interface SquadRollup {
 }
 
 export function squadRollup(
-  state: Pick<PlanState, 'engineers' | 'blocks'>,
+  state: Pick<PlanState, 'people' | 'blocks'>,
   weekStart: WeekStart,
 ): SquadRollup {
-  const active = state.engineers.filter((e) => e.active);
+  // Engineers only. Mixing the PM into a squad total hides the exact thing the
+  // PM's row exists to show — see spec §6.3.
+  const active = state.people.filter((e) => e.active && e.role === 'engineer');
   return active.reduce<SquadRollup>(
-    (acc, engineer) => {
-      const cell = cellCapacity(engineer, weekStart, state.blocks);
+    (acc, person) => {
+      const cell = cellCapacity(person, weekStart, state.blocks);
       const capacityHours = acc.capacityHours + cell.capacityHours;
       const bufferHours = acc.bufferHours + cell.bufferHours;
       return {
@@ -141,4 +143,68 @@ export function burnDown(blocks: Block[], initiativeId: Uuid): BurnDown {
     ratio: estimatedHours > 0 ? actualHours / estimatedHours : 0,
     isOverEstimate: actualHours > estimatedHours,
   };
+}
+
+
+/** Everyone in a role, in board order. */
+export function peopleInRole(people: Person[], role: Role): Person[] {
+  return people.filter((p) => p.active && p.role === role);
+}
+
+/**
+ * The PM's own week, told plainly enough to put in front of somebody else.
+ *
+ * `overtimeHours` is the number this whole feature exists for: hours actually
+ * logged beyond a sustainable week. It is evidence, not a status.
+ */
+export interface PersonWeek {
+  personId: Uuid;
+  name: string;
+  weekStart: WeekStart;
+  capacityHours: number;
+  plannedHours: number;
+  loggedHours: number;
+  bufferHours: number;
+  overtimeHours: number;
+  isOvertime: boolean;
+}
+
+export function personWeek(
+  person: Person,
+  weekStart: WeekStart,
+  blocks: Block[],
+): PersonWeek {
+  const cell = cellCapacity(person, weekStart, blocks);
+  const loggedHours = blocksInCell(blocks, person.id, weekStart)
+    .filter((b) => b.kind !== 'unavailable')
+    .reduce((sum, b) => sum + b.actualHours, 0);
+  const overtimeHours = Math.max(0, loggedHours - cell.capacityHours);
+  return {
+    personId: person.id,
+    name: person.name,
+    weekStart,
+    capacityHours: cell.capacityHours,
+    plannedHours: cell.allocatedHours,
+    loggedHours,
+    bufferHours: cell.bufferHours,
+    overtimeHours,
+    isOvertime: overtimeHours > 0,
+  };
+}
+
+/** Hours of PM work sitting in one week, by type. */
+export function pmWorkload(
+  blocks: Block[],
+  personId: Uuid,
+  weekStart: WeekStart,
+): { totalHours: number; byType: Record<string, number> } {
+  const mine = blocksInCell(blocks, personId, weekStart).filter(
+    (b) => b.kind === 'pm-work',
+  );
+  const byType: Record<string, number> = {};
+  for (const block of mine) {
+    const key = block.pmWork ?? 'other';
+    byType[key] = (byType[key] ?? 0) + block.hours;
+  }
+  return { totalHours: mine.reduce((s, b) => s + b.hours, 0), byType };
 }

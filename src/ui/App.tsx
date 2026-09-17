@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Board } from './Board';
+import { MyWeek } from './MyWeek';
 import { Rollup } from './Rollup';
 import { RejectionDialog } from './RejectionDialog';
 import { BlockDetail } from './BlockDetail';
@@ -41,11 +42,13 @@ export function App() {
         <div className="section-head">
           <h2>Squad board</h2>
           <p>
-            Drag a block to move it. Buffer is drawn in every cell that has any,
-            never left as empty space.
+            Two groups of rows: the thinking that has to happen first, and the
+            building it makes possible. Buffer is drawn in every cell that has
+            any, never left as empty space.
           </p>
         </div>
         <Board />
+        <MyWeek />
       </main>
 
       <BlockDetail />

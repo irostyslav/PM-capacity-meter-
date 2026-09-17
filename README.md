@@ -3,13 +3,19 @@
 A visual capacity planner for product managers that makes overcommitment visible
 before it happens and makes thinking a protected, first-class activity.
 
-Rows are engineers, columns are weeks, initiatives are draggable blocks — and
+Rows are people, columns are weeks, initiatives are draggable blocks — and
 unallocated capacity is drawn as a real thing, never as empty space. Nothing
 reaches the timeline without passing a five-question triage. Fuzzy work waits in
 a parking lot until someone can define it in one line. Low-confidence work can't
 be promised more than two weeks out.
 
 📄 **[Product spec →](docs/product-spec.md)**
+
+**The PM has a row too.** Discovery, definition, triage and stakeholder time
+consume the planner's capacity like anything else, engineering cannot be
+committed before the thinking that has to precede it, and hours worked past a
+sustainable week are counted and named. A planning tool whose operator works
+weekends to keep it accurate has not solved the problem — see spec §6.3–6.5.
 
 ## Status
 
@@ -53,6 +59,9 @@ Some specifics worth knowing before you change things:
 - **Red means overcommitment and nothing else.** The initiative palette was
   validated for colour-vision-deficiency separation, and red was kept out of it
   so the alarm never competes with an initiative's identity.
+- **The squad total never includes the PM.** Rolling them together hides the
+  state the PM row exists to show: a squad at 25% buffer while the planner is
+  6h over.
 - **Blocks do not span weeks.** Multi-week work is several linked blocks, which
   keeps the canvas simple. Spec §14 lists this as an open question.
 

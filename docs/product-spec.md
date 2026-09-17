@@ -88,7 +88,10 @@ These decide arguments during build.
 2. **Gates over warnings.** Where the product has an opinion, it blocks. A
    dismissible toast is not enforcement.
 3. **Thinking is schedulable work.** Spikes occupy real capacity and produce a
-   written artifact. A week spent thinking is a week well spent.
+   written artifact. A week spent thinking is a week well spent. **This applies
+   to the PM's own thinking first** — discovery that is not on the board is
+   discovery that is assumed to be free, and it will be paid for at night
+   (§6.3).
 4. **Confidence is part of a commitment.** An estimate without a confidence
    level is an unfinished thought.
 5. **Every refusal is recorded.** What got cut, who asked, and when, is a
@@ -164,6 +167,92 @@ so 16h of planned work leaves 2h of buffer, not 14h.
 On the canvas, absence is drawn *below* the capacity line, in no colour at all:
 it is neither work nor buffer. The capacity line moves up to meet the shortened
 week.
+
+#### 6.3 The PM is a row, not an assumption
+
+The original spec had a blind spot large enough to defeat its own thesis. It
+promised to make thinking "a protected, first-class activity", then modelled
+only engineers. A planner with no capacity is a planner whose discovery is
+implicitly free — so the board could show a perfectly balanced squad while the
+person who defined all of that work did it at night.
+
+That is not an oversight in the drawing. It is the mechanism by which PM work
+becomes unsustainable: **work nobody can see is work nobody has to budget for.**
+
+**The model.** `Engineer` becomes `Person`, carrying a `role` of `engineer` or
+`pm`. The PM gets a row, a weekly capacity, and blocks like anyone else. PM
+blocks are `kind = pm-work` with a named type:
+
+| Type | What it is |
+| --- | --- |
+| `discovery` | Finding out what the problem actually is |
+| `definition` | Writing the thing down well enough to build from |
+| `triage` | Running requests through the five questions |
+| `stakeholder` | The conversations that make the above stick |
+| `review` | Looking at what came back |
+
+Naming the type matters. "PM stuff, 30 hours" invites an argument; "discovery
+for the billing migration, 10 hours" does not.
+
+**Default capacity is 24h, not 30.** A PM's week carries more standing meetings
+than an engineer's before any thinking starts.
+
+**The squad total never includes the PM.** Rolling them together hides the exact
+thing the row exists to show: a squad reading 25% buffer while the planner is
+6h over is a real and common state, and the header has to be able to display
+both at once.
+
+#### 6.4 The lead-time gate
+
+Engineering work cannot be committed in a week unless the discovery or
+definition it depends on is already on the board, in an earlier week.
+
+```
+discovery.weekStart  ≤  engineeringWeek − 1 week
+```
+
+Refusals name the real problem rather than the rule:
+
+> *No discovery is scheduled for this work. Committing engineering to it prices
+> that thinking at zero, and it will come out of somebody's evening.*
+
+> *The discovery for this work is scheduled in the same week as the build, or
+> after it. Thinking that happens alongside the work it was meant to inform is
+> not discovery — it is rework.*
+
+Triage and stakeholder time do **not** satisfy the gate. They are real work and
+they consume real capacity, but they are not the thinking that makes a build
+possible, and letting them count would reopen the hole.
+
+This is the same move the product already makes everywhere else — an
+overcommitment made visible *before* it happens — pointed for the first time at
+the person doing the planning. The difference is where the refusal lands: an
+engineer's overcommitment is loud but permitted, because work already under way
+is real. A PM week that cannot absorb more thinking is refused at the point of
+commitment, because the alternative is not a visible failure — it is a quiet
+weekend.
+
+#### 6.5 The overtime ledger
+
+Planned hours are an intention. The ledger records what the week actually cost:
+
+| Figure | Why it is there |
+| --- | --- |
+| Sustainable week | The capacity, stated as a claim about what is sustainable |
+| Planned into it | What the plan assumes |
+| Actually worked | Logged hours |
+| **Evenings and weekends** | Logged minus sustainable. Named for what it is |
+| Weeks over, current run, longest run | One bad week is a bad week; nine in a row is a staffing decision |
+| Average per worked week | The steady-state cost, over weeks actually worked |
+
+Future weeks with nothing logged never count toward averages — an unstarted week
+is not evidence of sustainability. Weeks with absence shrink capacity first, so
+a light week during PTO is not scored as overtime.
+
+The ledger is **evidence, not a status**. Its job is to be forwarded. "I'm
+managing" is not a number anyone can act on; "eight weeks running, 74 hours past
+a sustainable week, 60% of it discovery for work that was committed before it
+was understood" is a staffing conversation with a shape.
 
 ### Initiative
 | Field | Type | Notes |
@@ -652,6 +741,12 @@ the spec is built on sand.
 ## 12. Success metrics
 
 **Primary (from the brief):**
+0. **The PM's overtime trends to zero.** Not in the original brief, and arguably
+   ahead of the other two: a planning tool whose own operator works weekends to
+   keep it accurate has not solved the problem, it has documented it. Measured
+   from the overtime ledger (§6.5) — total hours past a sustainable week, and
+   the length of the current run.
+
 1. **Fewer than two surprise overcommitments per quarter.** Measured as: weeks
    where actual allocated hours exceeded capacity *without* a prior
    `CommitmentLogEntry` acknowledging the tradeoff. The word that matters is
@@ -758,3 +853,37 @@ loop rather than the UI:
 
 The empty board itself is never a blank grid: it shows every engineer's week as
 100% buffer, which is the product's whole thesis stated as a picture.
+
+---
+
+## 16. Where this came from
+
+§6.3–6.5 exist because of one sentence from the PM this product is for:
+
+> *"It's assumed that I need to do my discoveries in no time. With small
+> features I can do that. With a lot of features also, but I have to work
+> overnight, I have to work during the weekend. It's not sustainable."*
+
+That is not a feature request. It is a report that the spec's central promise —
+"makes thinking a protected, first-class activity" — was being applied to
+everyone except the person reading it.
+
+Three things follow, and they are ranked deliberately:
+
+1. **Visibility before enforcement.** The row comes first. A PM cannot argue for
+   capacity they cannot show, and the argument is usually lost before it starts
+   because the work has no representation at all. The ledger is built to be
+   forwarded to somebody who has never thought about where specs come from.
+2. **Enforcement second.** The lead-time gate turns "I'll find the time" into a
+   scheduling conflict other people can see. This is the only way the visibility
+   stays true over time: without a gate, the PM row simply fills past capacity
+   every week and becomes another place to watch yourself drown.
+3. **The metric last.** PM overtime trending to zero joins the success metrics
+   as §12.0. A tool that hits its other two metrics while its operator works
+   weekends has not succeeded.
+
+What this deliberately does **not** do is ask the PM to work faster. There is no
+"discovery velocity", no suggestion that a well-run triage takes twenty minutes,
+nothing that reads as a productivity score. The thesis is that the hours are
+real and were always real; the only thing that changes is whether anybody can
+see them.
