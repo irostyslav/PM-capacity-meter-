@@ -9,7 +9,7 @@ reaches the timeline without passing a five-question triage. Fuzzy work waits in
 a parking lot until someone can define it in one line. Low-confidence work can't
 be promised more than two weeks out.
 
-📄 **[Product spec →](docs/product-spec.md)**
+📄 **[Product spec →](docs/product-spec.md)** · 🧭 **[Cascade plan (V2MOM alignment) →](docs/cascade-plan.md)**
 
 **The PM has a row too.** Discovery, definition, triage and stakeholder time
 consume the planner's capacity like anything else, engineering cannot be
