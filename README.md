@@ -9,7 +9,12 @@ reaches the timeline without passing a five-question triage. Fuzzy work waits in
 a parking lot until someone can define it in one line. Low-confidence work can't
 be promised more than two weeks out.
 
-📄 **[Product spec →](docs/product-spec.md)** · 🧭 **[Cascade plan (V2MOM alignment) →](docs/cascade-plan.md)**
+📄 **[Product spec →](docs/product-spec.md)** · 🧭 **[Cascade plan →](docs/cascade-plan.md)**
+
+> **Direction:** this repo is becoming **Cascade**, a private V2MOM alignment
+> workspace. The capacity board described here becomes one of its core
+> capabilities, showing the PM's and the delivery team's hours against the V2MOM
+> methods and measures they serve.
 
 **The PM has a row too.** Discovery, definition, triage and stakeholder time
 consume the planner's capacity like anything else, engineering cannot be
