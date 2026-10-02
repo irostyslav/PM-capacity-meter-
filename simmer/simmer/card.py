@@ -19,6 +19,9 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Literal
+from zoneinfo import ZoneInfo
+
+from simmer.config import DISPLAY_TZ
 
 Kind = Literal["capture", "recap"]
 KINDS: tuple[str, ...] = ("capture", "recap")
@@ -96,7 +99,7 @@ class Card:
 
     def render(self) -> str:
         """Plain-text rendering for the terminal."""
-        when = self.occurred_at.astimezone().strftime("%a %d %b %Y, %H:%M")
+        when = self.occurred_at.astimezone(ZoneInfo(DISPLAY_TZ)).strftime("%a %d %b %Y, %H:%M %Z")
         lines = [
             f"┌─ {self.kind.upper()} · {self.source} · {when}",
             f"│ {self.title}",

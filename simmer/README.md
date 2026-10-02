@@ -22,6 +22,23 @@ python -m simmer status   # shows where things live and how many cards exist
 python -m unittest discover -s tests
 ```
 
+## Getting an Otter meeting in
+
+Otter has no public API outside Enterprise plans, so meetings come in as JSON
+files. Today a Claude session with the Otter connector calls `otter_fetch` and
+saves the result to `data/inbox/otter/<meeting-id>.json`. Then:
+
+```sh
+python -m simmer otter-raw  data/inbox/otter/<id>.json          # log + print the raw payload
+python -m simmer otter-card data/inbox/otter/<id>.json \
+    --body "2-3 sentences: decisions, open items" --tag some-topic # store + print the card
+python -m simmer cards                                           # every card, newest first
+```
+
+Without `--body`, a rule-based summary is built from Otter's own summary and
+action items. Running `otter-card` twice on the same meeting is a no-op.
+Set `SIMMER_TZ` to change the display time zone (default America/Los_Angeles).
+
 ## Principles
 
 - Everything is logged (`data/simmer.log`).
@@ -40,6 +57,7 @@ simmer/
     log.py        logging to file + stderr
     card.py       the Card model (decisions documented at the top)
     db.py         SQLite storage; cards are append-only
+    sources/otter.py  Otter meeting JSON -> Card
   tests/          stdlib unittest
   data/           local storage, git-ignored
 ```
