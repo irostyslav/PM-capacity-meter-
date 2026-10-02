@@ -11,7 +11,19 @@ that I actually want to open.
 Tonight's scope: one real card rendered from one source (Otter.ai meeting
 transcripts). There's no feed UI, auth or other sources yet.
 
-## Running
+## The app
+
+`app/simmer.html` is the feed: a morning brief, an evening recap, a capture box
+and day-grouped cards.
+
+- **Inside claude.ai** (published as a private artifact) it reads Otter,
+  Google Calendar and Todoist live through your connectors, uses Claude to
+  write card summaries and recaps, and saves cards to your private store.
+- **On GitHub Pages** (`site/index.html`, built with `python build_site.py`)
+  there are no connectors, so it works as a capture-and-recap feed and keeps
+  cards in your browser.
+
+## Running the Python side
 
 Python 3.11+, standard library only. No dependencies yet.
 
