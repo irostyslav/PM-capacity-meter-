@@ -18,7 +18,8 @@ Python 3.11+, standard library only. No dependencies yet.
 ```sh
 cd simmer
 python -m simmer init     # creates data/simmer.db and data/simmer.log
-python -m simmer status   # shows where the database and log live
+python -m simmer status   # shows where things live and how many cards exist
+python -m unittest discover -s tests
 ```
 
 ## Principles
@@ -37,6 +38,8 @@ simmer/
     __main__.py   CLI entry point (python -m simmer ...)
     config.py     paths (data dir, db file, log file)
     log.py        logging to file + stderr
-    db.py         SQLite connection
+    card.py       the Card model (decisions documented at the top)
+    db.py         SQLite storage; cards are append-only
+  tests/          stdlib unittest
   data/           local storage, git-ignored
 ```

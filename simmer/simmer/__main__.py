@@ -17,10 +17,12 @@ def cmd_init(args: argparse.Namespace) -> None:
 def cmd_status(args: argparse.Namespace) -> None:
     conn = db.connect()
     tables = db.table_names(conn)
+    cards = db.count_cards(conn)
     conn.close()
     print(f"database: {DB_PATH}")
     print(f"log:      {LOG_PATH}")
-    print(f"tables:   {', '.join(tables) or '(none yet)'}")
+    print(f"tables:   {', '.join(tables)}")
+    print(f"cards:    {cards}")
 
 
 def main() -> None:
