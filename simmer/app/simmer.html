@@ -1,0 +1,823 @@
+<title>Simmer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one phone-width feed column. Sticky top bar with the Morning/Evening switch,
+   a brief block on top (stories row + plate), composer, Otter inbox, then day-grouped cards. */
+:root {
+  --bg: #EEF0F6;
+  --surface: #FFFFFF;
+  --surface-2: #F6F7FB;
+  --ink: #151826;
+  --muted: #5E6479;
+  --line: #DFE2EC;
+  --accent: #E23D68;
+  --accent-soft: #FCE4EB;
+  --on-accent: #FFFFFF;
+  --otter: #2D64E0;
+  --gcal: #0B8A62;
+  --todo: #D2432B;
+  --me: #6B4FE0;
+  --warn: #B45309;
+  --recap-a: #2A1F5C;
+  --recap-b: #7A1E4A;
+  --recap-ink: #FFF6F9;
+  --shadow: 0 1px 2px rgba(21,24,38,.06), 0 6px 20px rgba(21,24,38,.05);
+  --f-display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --f-body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E1017; --surface: #171A24; --surface-2: #1D2130; --ink: #ECEEF5; --muted: #9AA0B5;
+    --line: #2A2F3F; --accent: #FF6D8F; --accent-soft: #3A1B27; --on-accent: #1A0B11;
+    --otter: #7EA4FF; --gcal: #4CC79C; --todo: #FF8A70; --me: #A893FF; --warn: #F2B35B;
+    --recap-a: #2B2160; --recap-b: #6E1A44; --recap-ink: #FFF3F7;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E1017; --surface: #171A24; --surface-2: #1D2130; --ink: #ECEEF5; --muted: #9AA0B5;
+  --line: #2A2F3F; --accent: #FF6D8F; --accent-soft: #3A1B27; --on-accent: #1A0B11;
+  --otter: #7EA4FF; --gcal: #4CC79C; --todo: #FF8A70; --me: #A893FF; --warn: #F2B35B;
+  --recap-a: #2B2160; --recap-b: #6E1A44; --recap-ink: #FFF3F7;
+  --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.5; }
+a { color: inherit; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, a:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.top {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+.top-inner { max-width: 620px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; gap: 12px; }
+.brand { font-family: var(--f-display); font-weight: 800; font-size: 24px; letter-spacing: -.02em; display: flex; align-items: center; gap: 8px; }
+.brand svg { flex: none; }
+.tabs { margin-left: auto; display: flex; background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+.tabs button { border: 0; background: transparent; padding: 6px 14px; border-radius: 999px; font-weight: 600; font-size: 13px; color: var(--muted); }
+.tabs button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+
+.feed > section:empty { display: none; }
+.feed { max-width: 620px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 64px; display: flex; flex-direction: column; gap: 18px; }
+
+/* Brief */
+.hello h1 { font-family: var(--f-display); font-weight: 800; font-size: clamp(28px, 7vw, 38px); line-height: 1.05; letter-spacing: -.03em; margin: 0; text-wrap: balance; }
+.hello p { margin: 6px 0 0; color: var(--muted); }
+.pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.pill { font-family: var(--f-mono); font-size: 11.5px; padding: 3px 9px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); color: var(--muted); }
+.pill.hot { background: var(--accent-soft); border-color: transparent; color: var(--accent); font-weight: 500; }
+
+.label { font-size: 11.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; display: flex; align-items: center; gap: 8px; }
+.label .note { text-transform: none; letter-spacing: 0; font-weight: 400; margin-left: auto; font-family: var(--f-mono); font-size: 11px; }
+
+.stories { display: flex; gap: 14px; overflow-x: auto; padding: 2px 2px 8px; scrollbar-width: thin; }
+.story { flex: none; width: 74px; display: flex; flex-direction: column; align-items: center; gap: 6px; text-decoration: none; }
+.ring { width: 64px; height: 64px; border-radius: 50%; padding: 3px; background: conic-gradient(var(--gcal), var(--otter), var(--accent), var(--gcal)); }
+.story.past .ring { background: var(--line); }
+.ring span { width: 100%; height: 100%; border-radius: 50%; background: var(--surface); border: 2px solid var(--bg); display: grid; place-items: center; font-family: var(--f-mono); font-size: 12.5px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.story .cap { font-size: 11.5px; line-height: 1.25; text-align: center; color: var(--ink); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; width: 100%; }
+.story.past .cap { color: var(--muted); }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; }
+.plate { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.plate li { display: flex; gap: 10px; align-items: baseline; padding: 7px 0; border-top: 1px solid var(--line); min-width: 0; }
+.plate li:first-child { border-top: 0; padding-top: 0; }
+.plate .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--line); transform: translateY(-1px); }
+.plate .p1 { background: var(--todo); } .plate .p2 { background: var(--warn); } .plate .p3 { background: var(--otter); }
+.plate a { text-decoration: none; min-width: 0; overflow-wrap: anywhere; }
+.plate a:hover { text-decoration: underline; }
+.plate .due { margin-left: auto; font-family: var(--f-mono); font-size: 11px; color: var(--muted); flex: none; }
+.plate .due.late { color: var(--todo); }
+.open-items { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; }
+.open-items li { overflow-wrap: anywhere; }
+.open-items .from { color: var(--muted); font-size: 12.5px; }
+
+.state { color: var(--muted); font-size: 13.5px; margin: 0; }
+.state.err { color: var(--warn); }
+.skeleton { height: 12px; border-radius: 6px; background: var(--surface-2); margin: 6px 0; }
+
+/* Composer */
+.composer { display: flex; gap: 10px; align-items: flex-start; }
+.composer .avatar { margin-top: 2px; }
+.composer form { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.composer textarea { width: 100%; resize: none; min-height: 46px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); border-radius: 12px; padding: 11px 12px; font: inherit; line-height: 1.4; }
+.composer .row { display: flex; align-items: center; gap: 8px; }
+.composer .hint { font-size: 12px; color: var(--muted); }
+
+.btn { border: 0; border-radius: 999px; padding: 8px 16px; font-weight: 600; font-size: 13.5px; background: var(--accent); color: var(--on-accent); }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn.ghost { background: transparent; border: 1px solid var(--line); color: var(--ink); }
+.btn.right { margin-left: auto; }
+
+/* Inbox */
+.inbox { display: flex; flex-direction: column; gap: 10px; border-style: dashed; }
+.inbox ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.inbox li { display: flex; gap: 8px; font-size: 14px; min-width: 0; }
+.inbox li span:first-child { font-family: var(--f-mono); font-size: 11.5px; color: var(--muted); flex: none; padding-top: 2px; font-variant-numeric: tabular-nums; }
+.inbox .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+/* Cards */
+.day { font-family: var(--f-display); font-weight: 700; font-size: 18px; letter-spacing: -.01em; margin: 10px 0 -4px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); padding: 14px 16px 12px; display: flex; flex-direction: column; gap: 8px; animation: rise .35s ease both; }
+@keyframes rise { from { transform: translateY(6px); } to { transform: none; } }
+.card-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.avatar { width: 38px; height: 38px; border-radius: 50%; flex: none; display: grid; place-items: center; font-family: var(--f-display); font-weight: 800; font-size: 15px; color: #fff; }
+.avatar.otter { background: var(--otter); } .avatar.gcal { background: var(--gcal); } .avatar.todoist { background: var(--todo); }
+.avatar.me { background: var(--me); } .avatar.simmer { background: linear-gradient(135deg, var(--recap-a), var(--recap-b)); }
+.who { min-width: 0; display: flex; flex-direction: column; }
+.who b { font-weight: 600; font-size: 14px; }
+.who small { color: var(--muted); font-family: var(--f-mono); font-size: 11px; }
+.kind { margin-left: auto; font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 2px 6px; flex: none; }
+.new-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; }
+.card h3 { margin: 2px 0 0; font-family: var(--f-display); font-weight: 700; font-size: 19px; line-height: 1.2; letter-spacing: -.01em; text-wrap: balance; overflow-wrap: anywhere; }
+.card .body { margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.card .body b { font-weight: 600; }
+.people { font-size: 13px; color: var(--muted); }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag { font-size: 12.5px; color: var(--accent); }
+.card-foot { display: flex; align-items: center; gap: 14px; border-top: 1px solid var(--line); padding-top: 9px; margin-top: 2px; font-size: 13px; color: var(--muted); flex-wrap: wrap; }
+.card-foot a { text-decoration: none; font-weight: 600; color: var(--ink); }
+.card-foot a:hover { text-decoration: underline; }
+.card-foot .id { margin-left: auto; font-family: var(--f-mono); font-size: 10.5px; }
+
+.card.recap { background: linear-gradient(150deg, var(--recap-a), var(--recap-b)); color: var(--recap-ink); border-color: transparent; }
+.card.recap .who small, .card.recap .kind, .card.recap .people, .card.recap .card-foot { color: color-mix(in srgb, var(--recap-ink) 72%, transparent); }
+.card.recap .kind, .card.recap .card-foot { border-color: color-mix(in srgb, var(--recap-ink) 25%, transparent); }
+.card.recap .tag, .card.recap .card-foot a { color: var(--recap-ink); }
+.card.recap h3 { font-size: 22px; }
+.card.recap .avatar.simmer { background: color-mix(in srgb, var(--recap-ink) 18%, transparent); }
+
+.cta { display: flex; flex-direction: column; gap: 10px; }
+.cta p { margin: 0; }
+.thinking { font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
+.notice { font-size: 13px; color: var(--muted); text-align: center; }
+.empty { text-align: center; color: var(--muted); padding: 24px 8px; }
+.empty b { color: var(--ink); display: block; font-family: var(--f-display); font-size: 18px; margin-bottom: 4px; }
+
+@media (prefers-reduced-motion: reduce) { .card { animation: none; } }
+@media (max-width: 420px) { .card h3 { font-size: 17.5px; } .tabs button { padding: 6px 11px; } }
+</style>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand" aria-label="Simmer">
+      <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true">
+        <circle cx="8" cy="17" r="6" fill="var(--accent)"></circle>
+        <circle cx="17" cy="11" r="4.5" fill="var(--otter)"></circle>
+        <circle cx="20.5" cy="20" r="3" fill="var(--gcal)"></circle>
+      </svg>
+      simmer
+    </div>
+    <div class="tabs" role="group" aria-label="Brief">
+      <button id="tab-morning" type="button" aria-pressed="false">Morning</button>
+      <button id="tab-evening" type="button" aria-pressed="false">Evening</button>
+    </div>
+  </div>
+</header>
+
+<main class="feed">
+  <section id="brief" aria-live="polite"></section>
+  <section class="composer" aria-label="Capture">
+    <div class="avatar me" id="me-avatar">Me</div>
+    <form id="capture">
+      <textarea id="capture-text" rows="2" placeholder="Capture a thought, a win, a worry…  #tags work"></textarea>
+      <div class="row">
+        <span class="hint" id="capture-hint">Enter to post · Shift+Enter for a new line</span>
+        <button class="btn right" id="capture-post" type="submit">Post</button>
+      </div>
+    </form>
+  </section>
+  <section id="inbox"></section>
+  <section id="cards" aria-label="Feed"></section>
+</main>
+
+<script>
+(() => {
+  const SRV = { otter: "Otter_ai", gcal: "Google_Calendar", todo: "Todoist" };
+  const SOURCE_LABEL = { otter: "Otter", gcal: "Calendar", todoist: "Todoist", me: "You", simmer: "Simmer" };
+  const SOURCE_GLYPH = { otter: "O", gcal: "C", todoist: "T", me: "Me", simmer: "✦" };
+  const TZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  const S = {
+    mode: pickMode(),
+    name: "",
+    col: null,
+    dbState: "loading",       // loading | ok | local
+    live: true,               // false when connectors are unreachable (e.g. GitHub Pages)
+    cards: new Map(),
+    events: { status: "loading", items: [] },
+    tasks: { status: "loading", items: [] },
+    otter: { status: "loading", items: [] },
+    sample: null,
+    simmering: false,
+    recapping: false,
+    lastSeen: readLastSeen(),
+  };
+
+  // ---------- small helpers ----------
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const pad = (n) => String(n).padStart(2, "0");
+  const dayKey = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+  const timeOf = (d) => d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const first = (name) => (name || "").trim().split(/\s+/)[0] || "";
+
+  function pickMode() {
+    const h = (location.hash || "").replace("#", "");
+    if (h === "morning" || h === "evening") return h;
+    return new Date().getHours() < 15 ? "morning" : "evening";
+  }
+  function readLastSeen() {
+    try { return Number(localStorage.getItem("simmer:lastSeen")) || 0; } catch { return 0; }
+  }
+  function writeLastSeen() {
+    try { localStorage.setItem("simmer:lastSeen", String(Date.now())); } catch {}
+  }
+
+  function relTime(d) {
+    const now = new Date();
+    const mins = Math.round((now - d) / 60000);
+    if (mins >= 0 && mins < 1) return "just now";
+    if (mins >= 0 && mins < 60) return `${mins}m ago`;
+    if (dayKey(d) === dayKey(now)) return timeOf(d);
+    if (dayKey(d) === dayKey(addDays(now, -1))) return `Yesterday ${timeOf(d)}`;
+    return d.toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" }) + " " + timeOf(d);
+  }
+  function dayHeading(key) {
+    const now = new Date();
+    if (key === dayKey(now)) return "Today";
+    if (key === dayKey(addDays(now, -1))) return "Yesterday";
+    const [y, m, d] = key.split("-").map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString([], { weekday: "long", day: "numeric", month: "short" });
+  }
+
+  // Otter gives "YYYY/MM/DD HH:MM:SS" in US Pacific time with no offset.
+  function pacificToDate(s) {
+    const m = /^(\d{4})\/(\d{2})\/(\d{2}) (\d{2}):(\d{2}):(\d{2})$/.exec(s || "");
+    if (!m) return new Date(NaN);
+    const iso = `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}`;
+    for (const off of ["-07:00", "-08:00"]) {
+      const d = new Date(iso + off);
+      const h = new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", hour: "2-digit", hourCycle: "h23" }).format(d);
+      if (Number(h) === Number(m[4])) return d;
+    }
+    return new Date(iso + "-08:00");
+  }
+
+  // Connector results arrive as parsed JSON, as a JSON string, or wrapped in a content envelope.
+  function unwrap(p) {
+    if (typeof p === "string") { try { p = JSON.parse(p); } catch { return p; } }
+    if (p && p.result && Array.isArray(p.result.content)) {
+      const t = p.result.content.find((c) => c.type === "text");
+      if (t) return unwrap(t.text);
+    }
+    return p;
+  }
+  function payloadOf(result) {
+    if (!result) return null;
+    if (result.payload !== undefined) return unwrap(result.payload);
+    const t = (result.content || []).find((c) => c.type === "text");
+    return t ? unwrap(t.text) : null;
+  }
+
+  function connectorCopy(label, e) {
+    switch (e && e.code) {
+      case "server_not_connected":
+      case "server_not_found":
+      case "selection_required":
+        return `Add ${label} in claude.ai Settings → Connectors to see it here.`;
+      case "needs_reauth":
+        return `${label} needs reconnecting in claude.ai Settings → Connectors.`;
+      case "not_in_manifest":
+      case "consent_required":
+        return `${label} is turned off for Simmer. Allow it from the page's connector prompt to see it here.`;
+      case "blocked_by_policy":
+      case "approval_required":
+        return `Your organization blocks ${label} here.`;
+      case "not_granted":
+      case "capability_disabled":
+      case "capability_removed":
+        return `${label} isn't available in this view. Open Simmer on claude.ai.`;
+      case "tool_error":
+        return `${label} answered with an error: ${e.message || "no details"}.`;
+      default:
+        return `Couldn't reach ${label} just now. It will refresh when you come back.`;
+    }
+  }
+
+  // ---------- card helpers ----------
+  function cardList() {
+    return [...S.cards.values()].sort((a, b) => (b.occurredAt || "").localeCompare(a.occurredAt || ""));
+  }
+  function openSentence(body) {
+    const m = /Open:\s*([^]*?)(?:\s+Next:|$)/.exec(body || "");
+    return m ? m[1].trim() : "";
+  }
+  function newCard(fields) {
+    const now = new Date().toISOString();
+    return {
+      source: "me", sourceRef: "", kind: "capture", title: "", body: "",
+      occurredAt: now, createdAt: now, tags: [], people: [], media: [], rollupOf: [],
+      ...fields,
+    };
+  }
+  // Cards are never edited or deleted: a write only ever creates a new id.
+  async function saveCard(id, card) {
+    if (S.cards.has(id)) return false;
+    S.cards.set(id, { ...card, id });
+    render();
+    if (S.col) {
+      try { await S.col.doc(id).set(card); }
+      catch (e) { flash(`That card couldn't be saved (${e.code || "error"}). It stays here until you reload.`); }
+    } else {
+      saveLocal();
+    }
+    return true;
+  }
+  // Standalone mode (outside claude.ai): cards live in this browser only.
+  const LOCAL_KEY = "simmer:cards";
+  function loadLocal() {
+    try {
+      const all = JSON.parse(localStorage.getItem(LOCAL_KEY) || "{}");
+      for (const [id, c] of Object.entries(all)) S.cards.set(id, { ...c, id });
+    } catch {}
+  }
+  function saveLocal() {
+    try { localStorage.setItem(LOCAL_KEY, JSON.stringify(Object.fromEntries(S.cards))); }
+    catch { flash("This browser won't keep cards (private window?). They'll be gone when you close it."); }
+  }
+  function useLocalStore() {
+    if (S.dbState === "local") return;
+    S.col = null;
+    S.dbState = "local";
+    loadLocal();
+    render();
+  }
+
+  let flashTimer;
+  function flash(msg) {
+    const hint = $("capture-hint");
+    hint.textContent = msg;
+    clearTimeout(flashTimer);
+    flashTimer = setTimeout(() => { hint.textContent = "Enter to post · Shift+Enter for a new line"; }, 6000);
+  }
+
+  // ---------- render ----------
+  function render() {
+    $("tab-morning").setAttribute("aria-pressed", String(S.mode === "morning"));
+    $("tab-evening").setAttribute("aria-pressed", String(S.mode === "evening"));
+    $("brief").innerHTML = S.mode === "morning" ? renderMorning() : renderEvening();
+    $("inbox").innerHTML = renderInbox();
+    $("cards").innerHTML = renderCards();
+    bindDynamic();
+  }
+
+  function renderStories() {
+    const ev = S.events;
+    if (ev.status === "loading") return `<div class="stories">${Array.from({ length: 4 }, () => `<div class="story"><div class="ring"><span></span></div><div class="cap">&nbsp;</div></div>`).join("")}</div>`;
+    if (ev.status === "error") return `<p class="state err">${esc(ev.error)}</p>`;
+    if (!ev.items.length) return `<p class="state">Nothing on the calendar today. Wide open.</p>`;
+    const now = new Date();
+    return `<div class="stories">${ev.items.map((e) => {
+      const past = e.end && e.end < now;
+      const when = e.allDay ? "all day" : timeOf(e.start).replace(/\s?[AP]M$/i, "");
+      return `<a class="story${past ? " past" : ""}" href="${esc(e.link)}" target="_blank" rel="noopener" title="${esc(e.title)}">
+        <div class="ring"><span>${esc(when)}</span></div><div class="cap">${esc(e.title)}</div></a>`;
+    }).join("")}</div>`;
+  }
+
+  function renderPlate() {
+    const t = S.tasks;
+    if (t.status === "loading") return `<div class="skeleton"></div><div class="skeleton" style="width:70%"></div>`;
+    if (t.status === "error") return `<p class="state err">${esc(t.error)}</p>`;
+    if (!t.items.length) return `<p class="state">Nothing due today.</p>`;
+    const today = dayKey(new Date());
+    return `<ul class="plate">${t.items.slice(0, 6).map((x) => {
+      const late = x.due && x.due < today;
+      return `<li><span class="dot ${esc(x.priority)}"></span>
+        <a href="https://app.todoist.com/app/task/${encodeURIComponent(x.id)}" target="_blank" rel="noopener">${esc(x.content)}</a>
+        <span class="due${late ? " late" : ""}">${late ? "overdue" : "today"}</span></li>`;
+    }).join("")}</ul>${t.items.length > 6 ? `<p class="state" style="margin-top:6px">+${t.items.length - 6} more in Todoist</p>` : ""}`;
+  }
+
+  function renderOpenItems() {
+    const items = cardList().filter((c) => c.kind === "capture" && openSentence(c.body)).slice(0, 4);
+    if (!items.length) return "";
+    return `<div class="panel"><p class="label">Still open</p><ul class="open-items">${items.map((c) =>
+      `<li>${esc(openSentence(c.body))} <span class="from">· ${esc(c.title)}</span></li>`).join("")}</ul></div>`;
+  }
+
+  function counts() {
+    const today = dayKey(new Date());
+    const todays = cardList().filter((c) => dayKey(new Date(c.occurredAt)) === today);
+    const fresh = cardList().filter((c) => new Date(c.createdAt).getTime() > S.lastSeen).length;
+    return { todays, fresh };
+  }
+
+  function streak() {
+    const days = new Set(cardList().filter((c) => c.kind === "recap").map((c) => c.recapDay || dayKey(new Date(c.occurredAt))));
+    let n = 0;
+    let d = new Date();
+    if (!days.has(dayKey(d))) d = addDays(d, -1);
+    while (days.has(dayKey(d))) { n++; d = addDays(d, -1); }
+    return n;
+  }
+
+  function renderMorning() {
+    const name = first(S.name);
+    const meetings = S.events.items.filter((e) => !e.allDay).length;
+    const { fresh } = counts();
+    const pills = [];
+    if (S.live && S.events.status === "ok") pills.push(`<span class="pill">${meetings} on the calendar</span>`);
+    if (S.live && S.tasks.status === "ok") pills.push(`<span class="pill">${S.tasks.items.length} tasks due</span>`);
+    if (fresh) pills.push(`<span class="pill hot">${fresh} new card${fresh === 1 ? "" : "s"}</span>`);
+    return `<div style="display:flex;flex-direction:column;gap:18px">
+      <div class="hello"><h1>Good morning${name ? ", " + esc(name) : ""}.</h1>
+        <p>${esc(new Date().toLocaleDateString([], { weekday: "long", day: "numeric", month: "long" }))}</p>
+        <div class="pills">${pills.join("")}</div></div>
+      ${S.live ? `<div><p class="label">Today</p>${renderStories()}</div>
+      <div class="panel"><p class="label">On your plate</p>${renderPlate()}</div>` : `<div class="panel"><p class="label">Your sources</p>
+      <p class="state">Meetings, calendar and tasks show up when you open Simmer inside claude.ai with Otter, Google Calendar and Todoist connected. Here you can capture and recap on your own.</p></div>`}
+      ${renderOpenItems()}
+    </div>`;
+  }
+
+  function todaysRecap() {
+    const today = dayKey(new Date());
+    return cardList().find((c) => c.kind === "recap" && (c.recapDay || dayKey(new Date(c.occurredAt))) === today);
+  }
+
+  function renderEvening() {
+    const name = first(S.name);
+    const { todays } = counts();
+    const captures = todays.filter((c) => c.kind === "capture");
+    const n = streak();
+    const recap = todaysRecap();
+    const newSince = recap ? captures.filter((c) => !(recap.rollupOf || []).includes(c.id)).length : 0;
+    let cta;
+    if (S.recapping) {
+      cta = `<p class="thinking" id="recap-status">Rolling up ${captures.length} cards…</p>`;
+    } else if (recap && !newSince) {
+      cta = `<p>Today's recap is in. It's pinned in your feed.</p>`;
+    } else if (!captures.length) {
+      cta = `<p class="state">No cards from today yet. Post a capture or simmer a meeting, then roll up your day.</p>`;
+    } else {
+      cta = `<p>${recap ? `${newSince} card${newSince === 1 ? "" : "s"} came in after your recap.` : `${captures.length} card${captures.length === 1 ? "" : "s"} from today, ready to roll up.`}</p>
+        <div><button class="btn" id="recap-btn" type="button">${recap ? "Write an updated recap" : "Roll up my day"}</button></div>`;
+    }
+    return `<div style="display:flex;flex-direction:column;gap:18px">
+      <div class="hello"><h1>Evening${name ? ", " + esc(name) : ""}.</h1>
+        <p>${esc(new Date().toLocaleDateString([], { weekday: "long", day: "numeric", month: "long" }))}</p>
+        <div class="pills"><span class="pill">${captures.length} cards today</span>
+        ${n ? `<span class="pill hot">${n}-day recap streak</span>` : ""}</div></div>
+      <div class="panel cta"><p class="label">Debrief</p>${cta}</div>
+      ${renderOpenItems()}
+    </div>`;
+  }
+
+  function pendingMeetings() {
+    return S.otter.items.filter((m) => !S.cards.has("otter-" + m.id));
+  }
+
+  function renderInbox() {
+    const o = S.otter;
+    if (o.status === "loading") return `<div class="panel inbox"><p class="label">Otter</p><p class="state">Checking for new meetings…</p></div>`;
+    if (o.status === "error") return `<div class="panel inbox"><p class="label">Otter</p><p class="state err">${esc(o.error)}</p></div>`;
+    const pending = pendingMeetings();
+    if (!pending.length) return "";
+    if (S.dbState === "loading") return "";
+    return `<div class="panel inbox">
+      <p class="label">New from Otter <span class="note">last 3 days</span></p>
+      <ul>${pending.map((m) => `<li><span>${esc(relTime(m.start))}</span><span>${esc(m.title)}</span></li>`).join("")}</ul>
+      <div class="row">
+        <button class="btn" id="simmer-btn" type="button" ${S.simmering ? "disabled" : ""}>${S.simmering ? "Simmering…" : `Simmer ${pending.length} into cards`}</button>
+        <span class="thinking" id="simmer-status">${S.simmering ? "Reading the meetings. This takes about 20–40 seconds." : ""}</span>
+      </div></div>`;
+  }
+
+  function renderCard(c) {
+    const when = new Date(c.occurredAt);
+    const isNew = new Date(c.createdAt).getTime() > S.lastSeen;
+    const people = (c.people || []).filter((p) => p && p !== S.name);
+    const peopleLine = people.length ? `with ${esc(people.slice(0, 3).join(", "))}${people.length > 3 ? ` +${people.length - 3}` : ""}` : "";
+    const link = c.sourceRef && /^https:\/\//.test(c.sourceRef)
+      ? `<a href="${esc(c.sourceRef)}" target="_blank" rel="noopener">Open in ${esc(SOURCE_LABEL[c.source] || c.source)} ↗</a>` : "";
+    const sub = c.kind === "recap"
+      ? `Evening recap · rolls up ${(c.rollupOf || []).length} card${(c.rollupOf || []).length === 1 ? "" : "s"}`
+      : `${relTime(when)}${c.meta && c.meta.duration ? " · " + c.meta.duration : ""}`;
+    return `<article class="card${c.kind === "recap" ? " recap" : ""}">
+      <div class="card-head">
+        <div class="avatar ${esc(c.source)}" aria-hidden="true">${esc(SOURCE_GLYPH[c.source] || "•")}</div>
+        <div class="who"><b>${esc(SOURCE_LABEL[c.source] || c.source)}</b><small>${esc(sub)}</small></div>
+        ${isNew ? `<span class="new-dot" title="New since your last visit"></span>` : ""}
+        <span class="kind">${c.kind === "recap" ? "recap" : c.source === "otter" ? "meeting" : "capture"}</span>
+      </div>
+      ${c.title ? `<h3>${esc(c.title)}</h3>` : ""}
+      ${c.body ? `<p class="body">${esc(c.body).replace(/\b(Decided|Open|Next):/g, "<b>$1:</b>")}</p>` : ""}
+      ${peopleLine ? `<div class="people">${peopleLine}</div>` : ""}
+      ${(c.tags || []).length ? `<div class="tags">${c.tags.map((t) => `<span class="tag">#${esc(t)}</span>`).join("")}</div>` : ""}
+      ${link ? `<div class="card-foot">${link}</div>` : ""}
+    </article>`;
+  }
+
+  function renderCards() {
+    if (S.dbState === "loading") return `<div class="card"><div class="skeleton" style="width:40%"></div><div class="skeleton"></div><div class="skeleton" style="width:85%"></div></div>`;
+    const list = cardList();
+    let html = S.dbState === "local" ? `<p class="notice">Cards are saved in this browser.</p>` : "";
+    if (!list.length) {
+      return html + `<div class="empty"><b>Your feed starts here.</b>Post a capture above, or simmer a meeting from Otter.</div>`;
+    }
+    let lastKey = "";
+    const recap = todaysRecap();
+    if (recap && S.mode === "evening") html += renderCard(recap);
+    for (const c of list) {
+      if (recap && S.mode === "evening" && c === recap) continue;
+      const key = dayKey(new Date(c.occurredAt));
+      if (key !== lastKey) { html += `<h2 class="day">${esc(dayHeading(key))}</h2>`; lastKey = key; }
+      html += renderCard(c);
+    }
+    return html;
+  }
+
+  function bindDynamic() {
+    const sb = $("simmer-btn");
+    if (sb) sb.onclick = simmerMeetings;
+    const rb = $("recap-btn");
+    if (rb) rb.onclick = rollUpDay;
+  }
+
+  // ---------- actions ----------
+  function uniqueActionItems(items) {
+    const seen = new Set();
+    const out = [];
+    for (const raw of items || []) {
+      const m = /^(.*?) - \S* ?: (.*)$/.exec(raw);
+      const owner = m ? m[1].trim() : "";
+      const task = (m ? m[2] : raw).trim();
+      if (!seen.has(task.toLowerCase())) { seen.add(task.toLowerCase()); out.push({ owner, task }); }
+    }
+    return out;
+  }
+  const plain = (md) => String(md || "").replace(/[*#]+/g, "").trim();
+
+  function fallbackBody(m) {
+    const sum = m.summary || "";
+    const parts = [plain(sum.split("\n")[0])];
+    const open = sum.split("## Open Questions")[1];
+    if (open) {
+      const b = open.split("\n").find((l) => l.trim().startsWith("*"));
+      if (b) parts.push("Open: " + plain(b));
+    }
+    const ai = uniqueActionItems(m.actionItems);
+    if (ai.length) parts.push("Next: " + ai[0].task);
+    return parts.filter(Boolean).join(" ");
+  }
+  function fallbackPeople(m) {
+    const names = new Set();
+    for (const { owner } of uniqueActionItems(m.actionItems)) {
+      if (owner && !/^Speaker \d+$/.test(owner) && owner !== S.name) names.add(owner);
+    }
+    return [...names];
+  }
+
+  async function simmerMeetings() {
+    const pending = pendingMeetings();
+    if (!pending.length || S.simmering) return;
+    S.simmering = true;
+    render();
+    let written = null;
+    if (S.sample) {
+      const input = pending.map((m) => ({
+        id: m.id, title: m.title, start: m.startRaw, duration: m.duration,
+        summary: (m.summary || "").slice(0, 3000),
+        action_items: uniqueActionItems(m.actionItems).slice(0, 8).map((a) => `${a.owner}: ${a.task}`),
+      }));
+      const prompt = `You write cards for a personal life feed. The reader is ${S.name || "the user"}.
+For each meeting below, write a card body of 2-3 short plain-text sentences: what was decided (start with "Decided:"), what is still open (start with "Open:"), and the next step with its owner (start with "Next:"). Address the reader as "you". No markdown. If nothing was decided, skip that sentence.
+Also give 1-3 lowercase kebab-case topic tags, and the named people who took part (never "Speaker N", never the reader).
+Reply with only a JSON array, one object per meeting: [{"id": "...", "body": "...", "tags": ["..."], "people": ["..."]}]
+
+MEETINGS:
+${JSON.stringify(input, null, 1)}`;
+      try {
+        const out = await S.sample.json(prompt, { cache: { gcTime: 86400000 } });
+        if (Array.isArray(out)) written = new Map(out.filter((x) => x && x.id).map((x) => [String(x.id), x]));
+      } catch (e) {
+        if (e && e.code && e.code !== "cancelled") flash(sampleCopy(e));
+      }
+    }
+    for (const m of pending) {
+      const w = written && written.get(m.id);
+      await saveCard("otter-" + m.id, newCard({
+        source: "otter", sourceRef: m.url, kind: "capture", title: m.title,
+        body: (w && typeof w.body === "string" && w.body.trim()) || fallbackBody(m),
+        occurredAt: m.start.toISOString(),
+        tags: ["meeting", ...((w && Array.isArray(w.tags)) ? w.tags.map(String).slice(0, 3) : [])],
+        people: (w && Array.isArray(w.people)) ? w.people.map(String).filter((p) => !/^Speaker \d+$/.test(p)) : fallbackPeople(m),
+        meta: { duration: m.duration || "" },
+      }));
+    }
+    S.simmering = false;
+    render();
+  }
+
+  function sampleCopy(e) {
+    switch (e.code) {
+      case "not_granted": case "sampling_disabled": case "not_declared": case "capability_disabled": case "capability_removed":
+        return "Claude isn't allowed to write summaries here, so these cards use Otter's own summary.";
+      case "rate_limited": return "Claude is busy for you right now. Cards used Otter's own summary; try again later.";
+      case "session_expired": return "Sign in to claude.ai again to get Claude-written cards.";
+      default: return "Claude couldn't write these summaries, so the cards use Otter's own.";
+    }
+  }
+
+  async function rollUpDay() {
+    if (S.recapping) return;
+    const today = dayKey(new Date());
+    const captures = counts().todays.filter((c) => c.kind === "capture");
+    if (!captures.length) return;
+    S.recapping = true;
+    render();
+    let title = "", body = "", tags = [];
+    if (S.sample) {
+      const input = {
+        date: new Date().toLocaleDateString([], { weekday: "long", day: "numeric", month: "long" }),
+        cards: captures.map((c) => ({ source: c.source, title: c.title, body: c.body, at: timeOf(new Date(c.occurredAt)) })),
+        calendar: S.events.items.map((e) => ({ title: e.title, at: e.allDay ? "all day" : timeOf(e.start) })),
+        tasks_still_due: S.tasks.items.slice(0, 10).map((t) => t.content),
+      };
+      const prompt = `Write tonight's recap card for ${S.name || "the user"}'s day, from the data below. Address them as "you".
+Reply with only JSON: {"title": "max 8 words, specific to the day", "body": "3-4 plain-text sentences: what moved forward, key decisions, what is still open, and the one thing to start tomorrow with", "tags": ["1-3 lowercase kebab-case tags"]}
+
+DATA:
+${JSON.stringify(input, null, 1)}`;
+      try {
+        const out = await S.sample.json(prompt, { cache: false });
+        if (out && typeof out.body === "string") { title = String(out.title || ""); body = out.body; tags = Array.isArray(out.tags) ? out.tags.map(String).slice(0, 3) : []; }
+      } catch (e) {
+        if (e && e.code && e.code !== "cancelled") flash(sampleCopy(e));
+      }
+    }
+    if (!body) {
+      const meetings = captures.filter((c) => c.source === "otter").map((c) => c.title);
+      const opens = captures.map((c) => openSentence(c.body)).filter(Boolean).slice(0, 2);
+      title = `Your ${new Date().toLocaleDateString([], { weekday: "long" })}`;
+      body = [
+        meetings.length ? `${meetings.length} meeting${meetings.length === 1 ? "" : "s"}: ${meetings.join("; ")}.` : "",
+        `${captures.length - meetings.length} capture${captures.length - meetings.length === 1 ? "" : "s"} of your own.`,
+        opens.length ? `Still open: ${opens.join(" ")}` : "",
+      ].filter(Boolean).join(" ");
+    }
+    let n = 1, id = "recap-" + today;
+    while (S.cards.has(id)) id = `recap-${today}-${++n}`;
+    await saveCard(id, newCard({
+      source: "simmer", sourceRef: "recap:" + today, kind: "recap", title, body, tags,
+      rollupOf: captures.map((c) => c.id), recapDay: today,
+    }));
+    S.recapping = false;
+    render();
+  }
+
+  async function postCapture(ev) {
+    ev.preventDefault();
+    const box = $("capture-text");
+    const text = box.value.trim();
+    if (!text) return;
+    const tags = [...new Set((text.match(/#[\p{L}\p{N}_-]+/gu) || []).map((t) => t.slice(1).toLowerCase()))];
+    const clean = text.replace(/\s*#[\p{L}\p{N}_-]+/gu, "").trim();
+    const [line1, ...rest] = clean.split("\n");
+    const short = line1.length <= 70 && rest.join("").trim();
+    box.value = "";
+    await saveCard("me-" + Date.now().toString(36), newCard({
+      source: "me", kind: "capture",
+      title: short ? line1.trim() : "",
+      body: short ? rest.join("\n").trim() : clean,
+      tags,
+    }));
+  }
+
+  // ---------- data ----------
+  function onEvents(ev) {
+    if (ev.type === "error") {
+      const keep = !["needs_reauth", "server_not_connected", "not_in_manifest", "blocked_by_policy", "approval_required", "consent_required"].includes(ev.error.code);
+      if (keep && S.events.status === "ok") return;
+      S.events = { status: "error", items: [], error: connectorCopy("Google Calendar", ev.error) };
+      return render();
+    }
+    const p = payloadOf(ev.result) || {};
+    const items = (p.events || []).filter((e) => e.status !== "cancelled").map((e) => {
+      const allDay = !!(e.start && e.start.date && !e.start.dateTime);
+      const start = new Date(allDay ? e.start.date + "T00:00:00" : e.start.dateTime);
+      const end = e.end ? new Date(allDay ? e.end.date + "T00:00:00" : e.end.dateTime) : null;
+      return { title: e.summary || "(no title)", start, end, allDay, link: e.htmlLink || "https://calendar.google.com" };
+    }).sort((a, b) => (b.allDay - a.allDay) || (a.start - b.start));
+    S.events = { status: "ok", items };
+    render();
+  }
+
+  function onTasks(ev) {
+    if (ev.type === "error") {
+      const keep = !["needs_reauth", "server_not_connected", "not_in_manifest", "blocked_by_policy", "approval_required", "consent_required"].includes(ev.error.code);
+      if (keep && S.tasks.status === "ok") return;
+      S.tasks = { status: "error", items: [], error: connectorCopy("Todoist", ev.error) };
+      return render();
+    }
+    const p = payloadOf(ev.result) || {};
+    const rank = { p1: 1, p2: 2, p3: 3, p4: 4 };
+    const items = (p.tasks || []).filter((t) => !t.checked).map((t) => ({
+      id: t.id, content: t.content || "", due: t.dueDate || "", priority: t.priority || "p4",
+    })).sort((a, b) => (rank[a.priority] || 5) - (rank[b.priority] || 5) || a.due.localeCompare(b.due));
+    S.tasks = { status: "ok", items };
+    render();
+  }
+
+  function onOtter(ev) {
+    if (ev.type === "error") {
+      const keep = !["needs_reauth", "server_not_connected", "not_in_manifest", "blocked_by_policy", "approval_required", "consent_required"].includes(ev.error.code);
+      if (keep && S.otter.status === "ok") return;
+      S.otter = { status: "error", items: [], error: connectorCopy("Otter", ev.error) };
+      return render();
+    }
+    const p = payloadOf(ev.result) || {};
+    const items = (p.results || []).filter((m) => m && m.id).map((m) => ({
+      id: m.id, title: m.title || "Untitled meeting", url: m.url || `https://otter.ai/u/${m.id}`,
+      startRaw: m.start_time, start: pacificToDate(m.start_time), duration: m.duration || "",
+      summary: m.short_summary || "", actionItems: m.action_items || [],
+    })).filter((m) => !isNaN(m.start));
+    S.otter = { status: "ok", items };
+    render();
+  }
+
+  function otterDate(d) { return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())}`; }
+
+  async function boot() {
+    $("tab-morning").onclick = () => { S.mode = "morning"; history.replaceState(null, "", "#morning"); render(); };
+    $("tab-evening").onclick = () => { S.mode = "evening"; history.replaceState(null, "", "#evening"); render(); };
+    $("capture").addEventListener("submit", postCapture);
+    $("capture-text").addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); $("capture").requestSubmit(); }
+    });
+    render();
+
+    const c = window.claude;
+    const use = (n) => (c && c.use ? c.use(n).catch(() => null) : Promise.resolve(null));
+
+    use("user").then(async (user) => {
+      if (!user) return;
+      try { const me = await user.me(); S.name = me.name || ""; } catch {}
+      $("me-avatar").textContent = (first(S.name)[0] || "M").toUpperCase();
+      render();
+    });
+
+    Promise.all([use("db"), use("user")]).then(async ([db, user]) => {
+      if (!db || !user) return useLocalStore();
+      try {
+        const id = await user.id();
+        if (!id) throw new Error("no id");
+        S.col = db.collection("data/users/" + id);
+        S.col.onSnapshot((snap) => {
+          for (const d of snap.docs) S.cards.set(d.id, { ...d.data(), id: d.id });
+          S.dbState = "ok";
+          render();
+        }, () => useLocalStore());
+      } catch { useLocalStore(); }
+    });
+
+    use("sample").then((s) => { S.sample = s; });
+
+    const mcp = await use("mcp");
+    if (!mcp) {
+      S.live = false;
+      S.events = { status: "ok", items: [] };
+      S.tasks = { status: "ok", items: [] };
+      S.otter = { status: "ok", items: [] };
+      return render();
+    }
+    const now = new Date();
+    mcp.watchTool(SRV.gcal, "list_events", {
+      startTime: startOfDay(now).toISOString(), endTime: addDays(startOfDay(now), 1).toISOString(),
+      orderBy: "startTime", pageSize: 50, timeZone: TZ,
+    }, onEvents, { cache: { staleTime: 120000 }, refetchInterval: 600000 });
+    mcp.watchTool(SRV.todo, "find-tasks-by-date", { startDate: "today", limit: 30 }, onTasks,
+      { cache: { staleTime: 120000 }, refetchInterval: 600000 });
+    mcp.watchTool(SRV.otter, "otter_search", { created_after: otterDate(addDays(now, -3)), page_size: 15 }, onOtter,
+      { cache: { staleTime: 300000 }, refetchInterval: 900000 });
+
+    addEventListener("pagehide", writeLastSeen);
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") writeLastSeen(); });
+  }
+
+  boot();
+})();
+</script>
